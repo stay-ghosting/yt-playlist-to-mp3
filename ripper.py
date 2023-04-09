@@ -4,6 +4,7 @@ from pyyoutube import Api
 import sys
 import os
 
+# https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG
 # youtube-dl -x --audio-format mp3 <url>
 
 API_KEY = os.getenv("API_KEY")
