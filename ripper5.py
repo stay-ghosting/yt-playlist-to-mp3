@@ -3,7 +3,6 @@ from threading import Thread
 from pyyoutube import Api
 import sys
 import os
-import subprocess
 
 # youtube-dl -x --audio-format mp3 <url>
 
