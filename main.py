@@ -1,10 +1,10 @@
-import tkinter
 from tkinter import filedialog
 import customtkinter as ctk
-import subprocess
 import ripper
 import os
 import enum
+import concurrent.futures
+import threading
 
 # TODO create json save - recents/ key
 # TODO stop crashing
@@ -13,6 +13,7 @@ import enum
 app = ctk.CTk()
 
 url_input = ctk.StringVar()
+url_input.set("https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG")
 
 dir_input = ctk.StringVar()
 dir_input.set("")
@@ -48,13 +49,15 @@ def on_download():
         return
     
     try:
-        files_in_folder, files_to_download = ripper.filter_playlist(url, dir)
+        with concurrent.futures.ThreadPoolExecutor() as executer:
+            x = executer.submit(ripper.filter_playlist, url, dir)
+            files_in_folder, files_to_download = x.result()
     except KeyError:
         error_message.set("Please select a valid url")
         error_type = Error.URLError
         return
     else:
-        ripper.download_audio(files_to_download, dir, on_progress_callback, on_complete_callback)
+        threading.Thread(target=lambda:ripper.download_audio(files_to_download, dir, on_progress_callback, on_complete_callback)).start()
 
 def on_change_directory():
     dir_input.set(filedialog.askdirectory())
@@ -81,6 +84,7 @@ main = ctk.CTkFrame(app)
 lbl_url = ctk.CTkLabel(main, text="Playlist URL:")
 ety_url = ctk.CTkEntry(main, textvariable=url_input, placeholder_text="https://www.youtube.com/playlist?list=", width=500, border_width=0)
 ety_url.bind("<Key>", on_url_change)
+ety_url.bind("<Return>", lambda e: on_download())
 
 frm_dir = ctk.CTkFrame(main)
 btn_open_dir = ctk.CTkButton(frm_dir, text="Open Folder", command=on_change_directory)

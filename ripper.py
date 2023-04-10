@@ -41,7 +41,7 @@ def download_audio(videos: list[pytube.YouTube], dir: str,
                                             on_complete_callback(files_downloaded, amount_of_files))
         try:
             # try create an audio stream
-            audio = video.streams.filter(only_audio=True).all()[0]
+            audio = video.streams.filter(only_audio=True).first()
         except KeyError:
             # if error ... skip to next video
             continue
@@ -52,6 +52,7 @@ def download_audio(videos: list[pytube.YouTube], dir: str,
             new_name = video.title.replace('"', '') + f"[{video_id}].mp3"
             # download the file
             audio.download(dir, filename=new_name)
+        
 
 def filter_playlist(playlist_url: str, dir:str) -> Tuple[pytube.YouTube, pytube.YouTube]:
     """Filters playlist into:
