@@ -1,13 +1,8 @@
-import tkinter
-from tkinter import filedialog
-import sys
 import os
 import pytube
 from typing import Tuple
 
 # https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG
-# youtube-dl -x --audio-format mp3 <url>
-
 def file_exists_in_folder(url: str, dir: str):
     """Returns True if file exists in folder 
     by checking for video id in the title"""
