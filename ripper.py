@@ -4,6 +4,9 @@ from typing import Tuple, Callable
 import asyncio
 import time
 import re
+import numpy as np
+import subprocess
+import tempfile
 
 class Ripper:
     def __init__(self, dir: str, playlist_url: str):
@@ -27,8 +30,8 @@ class Ripper:
         else:
             return True
     
-    def file_exists_in_folder(self, video_url: str, files_names: list[str]):
-        """Returns True if file exists in folder 
+    def video_id_in_list(self, video_url: str, files_names: list[str]):
+        """Returns True if video id exists in list 
         by checking for video id in the title"""
 
         # get video ID
@@ -64,8 +67,6 @@ class Ripper:
             # amount of files to download
             amount_of_files = len(self.files_to_download)
             # register callback to when file finishes downloading
-            video.register_on_complete_callback(lambda stream, file_path:
-                                                on_complete_callback(len(self.files_downloaded) + 1, amount_of_files - len(self.unaccessable_videos)))
             try:
                 # try create an audio stream
                 audio = video.streams.filter(only_audio=True).first()
@@ -76,12 +77,22 @@ class Ripper:
                 # skip to next video
                 continue
             else:
-                # get video id
-                video_id = video.watch_url.split("=")[1]
                 # download the file
-                out_file = audio.download(self.dir)
-                # add 1 to the amount of files downloded
+                audio.download(self.dir)
+                # get the path
+                original_file_path = os.path.join(self.dir, audio.default_filename)
+                # creates new file name
+                new_file_name = f"{os.path.splitext(original_file_path)[0]} [{video.video_id}].mp3"
+                # creates new path
+                new_file_path = os.path.join(self.dir, new_file_name)
+                # convert to mp3
+                subprocess.run(["ffmpeg", "-i", original_file_path, new_file_name])
+                # add to list of files downloded
                 self.files_downloaded.append(video)
+                # delete original file
+                os.remove(original_file_path)
+                # call callback function
+                on_complete_callback(len(self.files_downloaded) + 1, amount_of_files - len(self.unaccessable_videos))
 
         on_done_callback(self)
 
@@ -96,7 +107,7 @@ class Ripper:
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
             # if in directory
-            file_exists = self.file_exists_in_folder(video.watch_url, filesNames)
+            file_exists = self.video_id_in_list(video.watch_url, filesNames)
             # if in directory or restricted video...
             if file_exists:
                 # add to files in folder list
