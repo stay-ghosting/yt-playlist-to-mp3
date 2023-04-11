@@ -1,3 +1,4 @@
 .env
 .vscode
 songs
+__pycache__
