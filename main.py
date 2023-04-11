@@ -28,8 +28,8 @@ class main():
         self.dir_input = ctk.StringVar()
         self.dir_input.set(self.debug_dir_input)
 
-        self.error_message = ctk.StringVar()
-        self.error_type : Error = None
+        self.error_message_url = ctk.StringVar()
+        self.error_message_dir = ctk.StringVar()
 
         self.lbl_file_load_progress_bar_text = ctk.StringVar()
         self.lbl_file_load_progress_bar_value = ctk.DoubleVar()
@@ -64,16 +64,19 @@ class main():
 
         ripper = Ripper(dir, playlist_url)
 
+        has_error_occured = False
         if not ripper.is_valid_playlist():
             ripper = None
-            self.error_message.set("Please select a valid url")
-            self.error_type = Error.URLError
-            return
+            self.error_message_url.set("Please select a valid url")
+            has_error_occured = True
 
         # if directory does NOT exist ...
         if not os.path.exists(dir):
-            self.error_message.set("Please select a valid folder")
+            self.error_message_dir.set("Please select a valid folder")
             self.error_type = Error.DirectoryError
+            has_error_occured = True
+
+        if has_error_occured:
             return
         
         t = threading.Thread(target=lambda:ripper.download_audio(self.on_file_downloaded, self.on_file_loaded)).start()
@@ -86,12 +89,10 @@ class main():
         if dir_input_temp == "":
             return
         self.dir_input.set(dir_input_temp)
-        if self.error_type == Error.DirectoryError:
-            self.error_message.set("")
+        self.error_message_dir.set("")
 
     def on_url_change(self, e):
-        if self.error_type == Error.URLError:
-            self.error_message.set("")
+        self.error_message_url.set("")
 
     def draw_screen(self):
         ctk.set_appearance_mode("System")
@@ -102,17 +103,17 @@ class main():
 
         main = ctk.CTkFrame(self.app)
 
-        lbl_url = ctk.CTkLabel(main, text="Playlist URL:")
-        ety_url = ctk.CTkEntry(main, textvariable=self.url_input, placeholder_text="https://www.youtube.com/playlist?list=", width=500, border_width=0)
-        ety_url.bind("<Key>", self.on_url_change)
-        ety_url.bind("<Return>", lambda e: self.download_all())
-
         frm_dir = ctk.CTkFrame(main)
         btn_open_dir = ctk.CTkButton(frm_dir, text="Open Folder", command=self.on_change_directory)
         lbl_dir_title = ctk.CTkLabel(frm_dir, text=f"Output folder:")
         lbl_dir = ctk.CTkLabel(frm_dir, textvariable=self.dir_input)
+        lbl_error_message_dir = ctk.CTkLabel(main, textvariable=self.error_message_dir, text_color="red")
 
-        lbl_error_message = ctk.CTkLabel(main, textvariable=self.error_message, text_color="red")
+        lbl_url = ctk.CTkLabel(main, text="Playlist URL:")
+        ety_url = ctk.CTkEntry(main, textvariable=self.url_input, placeholder_text="https://www.youtube.com/playlist?list=", width=500, border_width=0)
+        ety_url.bind("<Key>", self.on_url_change)
+        ety_url.bind("<Return>", lambda e: self.download_all())
+        lbl_error_message_url = ctk.CTkLabel(main, textvariable=self.error_message_url, text_color="red")
 
         lbl_file_load_progress_bar = ctk.CTkLabel(main, textvariable=self.lbl_file_load_progress_bar_text)
         file_load_progress_bar = ctk.CTkProgressBar(main, variable=self.lbl_file_load_progress_bar_value)
@@ -123,17 +124,18 @@ class main():
 
         btn_download = ctk.CTkButton(main, text="Start Download", command=lambda: self.download_all())
 
-        frm_dir.pack(fill=ctk.BOTH, padx=20, pady=(30, 0))
+        lbl_url.pack(pady=(20,5), anchor=ctk.W, padx=(30,0))
+        ety_url.pack(padx=20, pady=(0,0))
+        lbl_error_message_url.pack(pady=5)
+
+        frm_dir.pack(fill=ctk.BOTH, padx=20, pady=(0, 0))
         lbl_dir_title.grid(column=0, row=0, sticky=ctk.W, padx=(10, 0), pady=(10, 0))
         lbl_dir.grid(column=0, row=1, sticky=ctk.W, padx=(10, 0))
         btn_open_dir.grid(column=1, row=0, rowspan=2, sticky=ctk.NE, padx=(0, 10), pady=(10, 0))
         frm_dir.columnconfigure(0, weight=1)
         frm_dir.columnconfigure(1, weight=1)
+        lbl_error_message_dir.pack(pady=(4, 4))
 
-        lbl_url.pack(pady=(40,5), anchor=ctk.W, padx=(30,0))
-        ety_url.pack(padx=20, pady=(0,0))
-
-        lbl_error_message.pack(pady=5)
         lbl_file_load_progress_bar.pack(anchor=ctk.W, padx=(30,0))
         file_load_progress_bar.pack(fill=ctk.BOTH, padx=20, pady=(5, 15))
         lbl_all_files_progress_bar.pack(anchor=ctk.W, padx=(30,0))
