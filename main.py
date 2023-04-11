@@ -1,15 +1,16 @@
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import customtkinter as ctk
 from ripper import Ripper
 import os
-import threading
-from error import *
-from threadWithError import ThreadWithError
+from threadQueue import ThreadQueue
 
 
 # TODO create json save - recents/ key
-# TODO stop crashing
-#
+# TODO make logs
+# TODO add tags to filenames so file_exists_in_folder can find it
+# TODO convert to mp3
+# TODO fix load bar when invalid loads come up
+
 class main():
     def __init__(self):
         self.app = ctk.CTk()
@@ -73,16 +74,25 @@ class main():
         # if directory does NOT exist ...
         if not os.path.exists(dir):
             self.error_message_dir.set("Please select a valid folder")
-            self.error_type = Error.DirectoryError
             has_error_occured = True
 
         if has_error_occured:
             return
         
-        t = threading.Thread(target=lambda:ripper.download_audio(self.on_file_downloaded, self.on_file_loaded)).start()
-        # else:
-        #     print("ran")
-        #     threading.Thread(target=lambda:ripper.download_audio(self.on_file_downloaded)).start()
+        t = ThreadQueue()
+        t.add(lambda:print(1))
+        t.add(lambda:ripper.download_audio(self.on_file_downloaded, self.on_file_loaded, self.on_finish_downloading))
+    
+  
+    def on_finish_downloading(self, ripper: Ripper):
+        log = (
+        (f"{ripper.files_downloaded}/{ripper.playlist.length} file(s) downloaded")
+            + ((f"\n{len(ripper.files_age_restricted)} file(s) was age restricred") if (len(ripper.files_age_restricted) > 0) else "")
+            + ((f"\n{len(ripper.files_in_folder)} file(s) are in your folder alerady") if (len(ripper.files_in_folder) > 0) else "")
+            + ((f"\n{ripper.ammount_of_unaccessable_videos} file(s) couldn't be downloaded") if (ripper.ammount_of_unaccessable_videos > 0) else ""))
+        
+        messagebox.showinfo("Done!", log)
+        
 
     def on_change_directory(self):
         dir_input_temp = filedialog.askdirectory()
