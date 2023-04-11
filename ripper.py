@@ -80,8 +80,8 @@ class Ripper:
                     if os.path.isfile(os.path.join(self.dir, f))]
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
+            # if in directory
             file_exists = self.file_exists_in_folder(video.watch_url, filesNames)
-            on_progress_callback(i, len(self.playlist.videos))
             # if in directory or restricted video...
             if file_exists or video.age_restricted:
                 # add to files in folder list
@@ -89,6 +89,8 @@ class Ripper:
             else:    
                 # add to files to download list
                 self.files_to_download.append(video)
+            # call callback function
+            on_progress_callback(i, len(self.playlist.videos) - len(self.files_in_folder))
 
 
 # url = 'https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG'
