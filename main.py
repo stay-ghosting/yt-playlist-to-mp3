@@ -58,36 +58,17 @@ class main():
             progress.set(value)
         return progressAndMessage
 
-
-    # def on_file_loaded(self, files_loaded, amount_of_files):
-    #     if files_loaded + amount_of_files <= 0:
-    #         value = 0
-    #         message = f"File Load Progress:"
-    #     else:
-    #         value = round(files_loaded / amount_of_files * 100)
-    #         message = f"File Load Progress: {files_loaded} / {amount_of_files}"
-
-    #     self.lbl_file_load_progress_bar_text.set(message)
-    #     self.lbl_file_load_progress_bar_value.set(value)
-
-
-
-    # def on_file_downloaded(self, files_downloaded, amount_of_files):
-    #     if files_downloaded + amount_of_files <= 0:
-    #         value = 0
-    #         self.lbl_all_files_progress_bar_text.set(f"Download Progress:")
-    #     else:
-    #         value = files_downloaded / amount_of_files
-    #         self.lbl_all_files_progress_bar_text.set(f"Download Progress: {files_downloaded} / {amount_of_files}")
-
-    #     self.lbl_all_files_progress_bar_value.set(value)
-
-
     def download_all(self):
         playlist_url = self.url_input.get()
         dir = self.dir_input.get()
 
         ripper = Ripper(dir, playlist_url)
+
+        if not ripper.is_valid_playlist():
+            ripper = None
+            self.error_message.set("Please select a valid url")
+            self.error_type = Error.URLError
+            return
 
         # if directory does NOT exist ...
         if not os.path.exists(dir):
@@ -95,13 +76,7 @@ class main():
             self.error_type = Error.DirectoryError
             return
         
-        try:
-            t = ThreadWithError(target=lambda:ripper.download_audio(self.on_file_downloaded, self.on_file_loaded))
-            t.start()
-        except KeyError:
-            self.error_message.set("Please select a valid url")
-            self.error_type = Error.URLError
-            return
+        t = threading.Thread(target=lambda:ripper.download_audio(self.on_file_downloaded, self.on_file_loaded)).start()
         # else:
         #     print("ran")
         #     threading.Thread(target=lambda:ripper.download_audio(self.on_file_downloaded)).start()

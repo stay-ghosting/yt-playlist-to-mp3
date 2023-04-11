@@ -12,6 +12,18 @@ class Ripper:
         self.files_to_download : list[pytube.YouTube] = []
         self.files_in_folder : list[pytube.YouTube] = []
     
+    def is_valid_playlist(self):
+        """True if playlist exists"""
+        # try ... get length of playlist
+        try:
+            self.playlist.length
+        # if NOT found ... return False
+        except Exception:
+            return False
+        # if found ... return True
+        else:
+            return True
+    
     def file_exists_in_folder(self, video_url: str, files_names: list[str]):
         """Returns True if file exists in folder 
         by checking for video id in the title"""
