@@ -11,6 +11,9 @@ class Ripper:
         self.playlist = pytube.Playlist(playlist_url)
         self.files_to_download : list[pytube.YouTube] = []
         self.files_in_folder : list[pytube.YouTube] = []
+        self.files_age_restricted : list[pytube.YouTube] = []
+        self.ammount_of_unaccessable_videos = 0
+        self.files_downloaded = 0
     
     def is_valid_playlist(self):
         """True if playlist exists"""
@@ -47,28 +50,40 @@ class Ripper:
             return False
     
     def download_audio(self, 
-                       on_complete_callback: Callable[[int, int], None],
-                       on_progress_callback: Callable[[int, int], any]):
+                       on_complete_callback: Callable[[int, int], any],
+                       on_progress_callback: Callable[[int, int], any],
+                       on_done_callback):
         """Gets list of YouTube objects and coverts them to mp3.
         Also adds video id at the end of the title"""
         self.filter_playlist(on_progress_callback)
+        # reset variables
+        self.files_downloaded = 0
+        self.ammount_of_unaccessable_videos = 0
         # for each video ...
         for i, video in enumerate(self.files_to_download):
-            files_downloaded = i + 1
+            # amount of files to download
             amount_of_files = len(self.files_to_download)
+            # register callback to when file finishes downloading
             video.register_on_complete_callback(lambda stream, file_path:
-                                                on_complete_callback(files_downloaded, amount_of_files))
+                                                on_complete_callback(self.files_downloaded + 1, amount_of_files))
             try:
                 # try create an audio stream
                 audio = video.streams.filter(only_audio=True).first()
             except KeyError:
-                # if error ... skip to next video
+                # if error ... 
+                # increment value
+                self.ammount_of_unaccessable_videos += 1
+                # skip to next video
                 continue
             else:
                 # get video id
                 video_id = video.watch_url.split("=")[1]
                 # download the file
                 out_file = audio.download(self.dir)
+                # add 1 to the amount of files downloded
+                self.files_downloaded = i + 1
+
+        on_done_callback(self)
 
     def filter_playlist(self, on_progress_callback: Callable[[int, int], any]) -> Tuple[pytube.YouTube, pytube.YouTube]:
         """Filters playlist into:
@@ -83,9 +98,13 @@ class Ripper:
             # if in directory
             file_exists = self.file_exists_in_folder(video.watch_url, filesNames)
             # if in directory or restricted video...
-            if file_exists or video.age_restricted:
+            if file_exists:
                 # add to files in folder list
                 self.files_in_folder.append(video)
+            # if file age restricted ...
+            elif video.age_restricted:
+                # add to age restricted list
+                self.files_age_restricted.append(video)
             else:    
                 # add to files to download list
                 self.files_to_download.append(video)
