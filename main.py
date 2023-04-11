@@ -5,6 +5,10 @@ import os
 import enum
 import concurrent.futures
 import threading
+import asyncio
+import time
+from threadWithReturn import ThreadWithReturnValue
+
 
 # TODO create json save - recents/ key
 # TODO stop crashing
@@ -16,7 +20,7 @@ url_input = ctk.StringVar()
 url_input.set("https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG")
 
 dir_input = ctk.StringVar()
-dir_input.set("")
+dir_input.set("D:/ribby/Documents/Work/python/ripper/songs")
 
 error_message = ctk.StringVar()
 error_message.set("")
@@ -49,9 +53,7 @@ def on_download():
         return
     
     try:
-        with concurrent.futures.ThreadPoolExecutor() as executer:
-            x = executer.submit(ripper.filter_playlist, url, dir)
-            files_in_folder, files_to_download = x.result()
+        files_in_folder, files_to_download = ripper.filter_playlist(url, dir)
     except KeyError:
         error_message.set("Please select a valid url")
         error_type = Error.URLError
@@ -60,7 +62,10 @@ def on_download():
         threading.Thread(target=lambda:ripper.download_audio(files_to_download, dir, on_progress_callback, on_complete_callback)).start()
 
 def on_change_directory():
-    dir_input.set(filedialog.askdirectory())
+    dir_input_temp = filedialog.askdirectory()
+    if dir_input_temp == "":
+        return
+    dir_input.set(dir_input_temp)
     if error_type == Error.DirectoryError:
         error_message.set("")
 

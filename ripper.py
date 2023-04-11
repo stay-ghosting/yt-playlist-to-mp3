@@ -1,9 +1,13 @@
 import os
 import pytube
 from typing import Tuple, Callable
+import asyncio
+import time
+import re
+from threadWithReturn import ThreadWithReturnValue
 
 # https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG
-def file_exists_in_folder(url: str, dir: str):
+def file_exists_in_folder(url: str, dir: str, filesNames: list[str]):
     """Returns True if file exists in folder 
     by checking for video id in the title"""
     # get the title
@@ -11,9 +15,7 @@ def file_exists_in_folder(url: str, dir: str):
     video_id_formatted = f"[{video_id}]"
     # video = pytube.YouTube(url) TODO
     # video.video_id
-    # get names of every file in directory
-    filesNames = [f for f in os.listdir(dir) 
-                  if os.path.isfile(os.path.join(dir, f))]
+    
     # for each file ...
     for fileName in filesNames:
         # if file found in directory ...
@@ -23,6 +25,7 @@ def file_exists_in_folder(url: str, dir: str):
             return True
     # if not found
     else:
+        print(f"video added: {video_id}")
         # return false
         return False
   
@@ -48,10 +51,8 @@ def download_audio(videos: list[pytube.YouTube], dir: str,
         else:
             # get video id
             video_id = video.watch_url.split("=")[1]
-            # add it to the title and set it to mp3 file
-            new_name = video.title.replace('"', '') + f"[{video_id}].mp3"
             # download the file
-            audio.download(dir, filename=new_name)
+            out_file = audio.download(dir)
         
 
 def filter_playlist(playlist_url: str, dir:str) -> Tuple[pytube.YouTube, pytube.YouTube]:
@@ -61,16 +62,23 @@ def filter_playlist(playlist_url: str, dir:str) -> Tuple[pytube.YouTube, pytube.
 
     # get playlist
     playlist = pytube.Playlist(playlist_url)
+
     # file lists to populate
     files_to_download = []
     files_in_folder = []
     # for video in playlist ...
+    # get names of every file in directory
+    filesNames = [f for f in os.listdir(dir) 
+                  if os.path.isfile(os.path.join(dir, f))]
     for video in playlist.videos:
         # if in directory already ...
-        if file_exists_in_folder(video.watch_url, dir) or video.age_restricted == True:
+        file_exists = file_exists_in_folder(video.watch_url, dir, filesNames)
+        # file_exists = file_exists_in_folder(video.watch_url, dir, filesNames) 
+
+        if file_exists or video.age_restricted:
             # add to files in folder list
             files_in_folder.append(video)
-        else:
+        else:    
             # add to files to download list
             files_to_download.append(video)
     # return files list in tuple
