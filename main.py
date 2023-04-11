@@ -86,10 +86,10 @@ class main():
   
     def on_finish_downloading(self, ripper: Ripper):
         log = (
-        (f"{ripper.files_downloaded}/{ripper.playlist.length} file(s) downloaded")
+        (f"{len(ripper.files_downloaded)}/{ripper.playlist.length} file(s) downloaded")
             + ((f"\n{len(ripper.files_age_restricted)} file(s) was age restricred") if (len(ripper.files_age_restricted) > 0) else "")
             + ((f"\n{len(ripper.files_in_folder)} file(s) are in your folder alerady") if (len(ripper.files_in_folder) > 0) else "")
-            + ((f"\n{ripper.ammount_of_unaccessable_videos} file(s) couldn't be downloaded") if (ripper.ammount_of_unaccessable_videos > 0) else ""))
+            + ((f"\n{ripper.unaccessable_videos} file(s) couldn't be downloaded") if (len(ripper.unaccessable_videos) > 0) else ""))
         
         messagebox.showinfo("Done!", log)
         

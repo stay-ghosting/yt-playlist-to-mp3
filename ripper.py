@@ -12,8 +12,8 @@ class Ripper:
         self.files_to_download : list[pytube.YouTube] = []
         self.files_in_folder : list[pytube.YouTube] = []
         self.files_age_restricted : list[pytube.YouTube] = []
-        self.ammount_of_unaccessable_videos = 0
-        self.files_downloaded = 0
+        self.unaccessable_videos : list[pytube.YouTube] = []
+        self.files_downloaded : list[pytube.YouTube] = []
     
     def is_valid_playlist(self):
         """True if playlist exists"""
@@ -57,22 +57,22 @@ class Ripper:
         Also adds video id at the end of the title"""
         self.filter_playlist(on_progress_callback)
         # reset variables
-        self.files_downloaded = 0
-        self.ammount_of_unaccessable_videos = 0
+        self.files_downloaded = []
+        self.unaccessable_videos = []
         # for each video ...
         for i, video in enumerate(self.files_to_download):
             # amount of files to download
             amount_of_files = len(self.files_to_download)
             # register callback to when file finishes downloading
             video.register_on_complete_callback(lambda stream, file_path:
-                                                on_complete_callback(self.files_downloaded + 1, amount_of_files))
+                                                on_complete_callback(len(self.files_downloaded) + 1, amount_of_files - len(self.unaccessable_videos)))
             try:
                 # try create an audio stream
                 audio = video.streams.filter(only_audio=True).first()
             except KeyError:
                 # if error ... 
                 # increment value
-                self.ammount_of_unaccessable_videos += 1
+                self.unaccessable_videos.append(video)
                 # skip to next video
                 continue
             else:
@@ -81,7 +81,7 @@ class Ripper:
                 # download the file
                 out_file = audio.download(self.dir)
                 # add 1 to the amount of files downloded
-                self.files_downloaded = i + 1
+                self.files_downloaded.append(video)
 
         on_done_callback(self)
 
@@ -108,8 +108,10 @@ class Ripper:
             else:    
                 # add to files to download list
                 self.files_to_download.append(video)
+            # get amount of videos in total that can be downloaded
+            total_videos = len(self.playlist.videos) - len(self.files_in_folder) - len(self.files_age_restricted)
             # call callback function
-            on_progress_callback(i, len(self.playlist.videos) - len(self.files_in_folder))
+            on_progress_callback(i, total_videos)
 
 
 # url = 'https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG'
