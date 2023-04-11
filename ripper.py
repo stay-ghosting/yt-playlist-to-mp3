@@ -4,7 +4,6 @@ from typing import Tuple, Callable
 import asyncio
 import time
 import re
-from threadWithReturn import ThreadWithReturnValue
 
 class Ripper:
     def __init__(self, dir: str, playlist_url: str):
@@ -35,9 +34,12 @@ class Ripper:
             # return false
             return False
     
-    def download_audio(self, on_complete_callback: Callable[[int, int], None]):
+    def download_audio(self, 
+                       on_complete_callback: Callable[[int, int], None],
+                       on_progress_callback: Callable[[int, int], any]):
         """Gets list of YouTube objects and coverts them to mp3.
         Also adds video id at the end of the title"""
+        self.filter_playlist(on_progress_callback)
         # for each video ...
         for i, video in enumerate(self.files_to_download):
             files_downloaded = i + 1
@@ -55,7 +57,6 @@ class Ripper:
                 video_id = video.watch_url.split("=")[1]
                 # download the file
                 out_file = audio.download(self.dir)
-            
 
     def filter_playlist(self, on_progress_callback: Callable[[int, int], any]) -> Tuple[pytube.YouTube, pytube.YouTube]:
         """Filters playlist into:
