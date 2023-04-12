@@ -1,4 +1,3 @@
-import tempfile
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
 from ripper import Ripper
