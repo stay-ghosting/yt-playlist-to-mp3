@@ -8,6 +8,7 @@ from threadQueue import ThreadQueue
 # TODO create json save - recents/ key
 # TODO make logs
 # TODO add threaded downloads
+# TODO time elapsed
 
 class main():
     def __init__(self):
@@ -21,8 +22,8 @@ class main():
 
 
     def initilaise_variables(self):
-        self.debug_url_input = ("https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG")
-        self.debug_dir_input = ("D:/ribby/Documents/Work/python/ripper/songs")
+        self.debug_url_input = ("https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-")
+        self.debug_dir_input = (r"D:\ribby\Music\songs\party")
 
         self.url_input = ctk.StringVar()
         self.url_input.set(self.debug_url_input)
@@ -48,13 +49,16 @@ class main():
 
 
     def progress(self, message: str, text: ctk.StringVar, progress: ctk.DoubleVar):
-        def progressAndMessage(items_completed: int, amount_of_items: int):
-            if items_completed + amount_of_items <= 0:
+        def progressAndMessage(items_completed: int, amount_of_items: int, filename: str = "", is_finished = False):
+            if is_finished:
+                value = 1
+                text.set(f"{message} {items_completed} / {amount_of_items} - Done!")
+            elif items_completed + amount_of_items <= 0:
                 value = 0
                 text.set(message)
             else:
                 value = round(items_completed / amount_of_items, 2)
-                text.set(f"{message} {items_completed} / {amount_of_items}")
+                text.set(f"{message} {items_completed} / {amount_of_items} - {filename}")
 
             progress.set(value)
         return progressAndMessage
@@ -78,7 +82,6 @@ class main():
         if has_error_occured:
             return
         
-        self.t.add(lambda:print(1))
         self.t.add(lambda:self.ripper.download_audio(self.on_file_downloaded, self.on_file_loaded, self.on_finish_downloading))
     
   
@@ -87,7 +90,7 @@ class main():
         (f"{len(ripper.files_downloaded)}/{ripper.playlist.length} file(s) downloaded")
             + ((f"\n{len(ripper.files_age_restricted)} file(s) was age restricred") if (len(ripper.files_age_restricted) > 0) else "")
             + ((f"\n{len(ripper.files_in_folder)} file(s) are in your folder alerady") if (len(ripper.files_in_folder) > 0) else "")
-            + ((f"\n{ripper.unaccessable_videos} file(s) couldn't be downloaded") if (len(ripper.unaccessable_videos) > 0) else ""))
+            + ((f"\n{len(ripper.unaccessable_videos)} file(s) couldn't be downloaded") if (len(ripper.unaccessable_videos) > 0) else ""))
         
         messagebox.showinfo("Done!", log)
         
