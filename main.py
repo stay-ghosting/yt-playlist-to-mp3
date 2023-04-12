@@ -7,6 +7,7 @@ from threadQueue import ThreadQueue
 
 # TODO create json save - recents/ key
 # TODO make logs
+# TODO add threaded downloads
 
 class main():
     def __init__(self):
