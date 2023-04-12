@@ -38,24 +38,24 @@ class OneFunctionThread:
 		self.is_alive = False
 
 
-def foo(s):
-    time.sleep(s)
-    print(f"**{s}")
+# def foo(s):
+#     time.sleep(s)
+#     print(f"**{s}")
     
-t = OneFunctionThread()
-t.set_function(lambda:foo(2))
-t.set_function(lambda:foo(0.5))
-t.set_function(lambda:foo(0.7))
-t.set_function(lambda:foo(0.3))
-t.set_function(lambda:foo(0.1))
+# t = OneFunctionThread()
+# t.set_function(lambda:foo(2))
+# t.set_function(lambda:foo(0.5))
+# t.set_function(lambda:foo(0.7))
+# t.set_function(lambda:foo(0.3))
+# t.set_function(lambda:foo(0.1))
 
-time.sleep(2.2)
+# time.sleep(2.2)
 
-t.set_function(lambda:foo(2))
-t.set_function(lambda:foo(0.5))
-t.set_function(lambda:foo(0.7))
-t.set_function(lambda:foo(0.3))
-t.set_function(lambda:foo(0.1))
+# t.set_function(lambda:foo(2))
+# t.set_function(lambda:foo(0.5))
+# t.set_function(lambda:foo(0.7))
+# t.set_function(lambda:foo(0.3))
+# t.set_function(lambda:foo(0.1))
 
 
 # 2 

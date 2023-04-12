@@ -8,6 +8,7 @@ import tempfile
 from threading import Thread
 from multiThread import *
 import shutil
+from oneFunctionThead import OneFunctionThread
 
 from threadQueue import ThreadQueue
 
@@ -122,9 +123,9 @@ class Ripper:
         self.files_downloaded = []
         self.unaccessable_videos = []
         temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
-        # create a multi thread object
+        # create thread objects
         multi_thread = MultiThread()
-        thread_queue = ThreadQueue()
+        callback_thread = OneFunctionThread()
         # for each video ...
         for i, video in enumerate(self.files_to_download):
             def download():
@@ -133,7 +134,7 @@ class Ripper:
                     # stop script
                     return
                 # call callback
-                on_complete_callback(*self.get_values_for_callback_download(video, False))
+                callback_thread.set_function(lambda:on_complete_callback(*self.get_values_for_callback_download(video, False)))
                 # register callback to when file finishes downloading
                 try:
                     # try create an audio stream
@@ -143,7 +144,7 @@ class Ripper:
                     # increment value
                     self.unaccessable_videos.append(video)
                     # call callback
-                    thread_queue.add(on_complete_callback(*self.get_values_for_callback_download(video, False)))
+                    callback_thread.set_function(lambda:on_complete_callback(*self.get_values_for_callback_download(video, False)))
                     # skip to next video
                     return
                 else:
@@ -162,7 +163,7 @@ class Ripper:
                     # add to list of files downloded
                     self.files_downloaded.append(video)
                     # call callback function
-                    thread_queue.add(on_complete_callback(*self.get_values_for_callback_download(video, False)))
+                    callback_thread.set_function(lambda:on_complete_callback(*self.get_values_for_callback_download(video, False)))
             # add download to thread
             multi_thread.add(download)
 
@@ -199,15 +200,17 @@ class Ripper:
         filesNames = [
             f for f in os.listdir(self.dir) if os.path.isfile(os.path.join(self.dir, f))
         ]
-        # create a multi thread object
+        # create thread objects
         multi_thread = MultiThread()
+        callback_thread = OneFunctionThread()
+
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
             def filter():
                 if self.stop == True:
                     return
                 # call callback
-                on_progress_callback(*self.get_values_for_callback_load(video, False))
+                callback_thread.set_function(lambda:on_progress_callback(*self.get_values_for_callback_load(video, False)))
                 # if in directory
                 file_exists = self.video_id_in_list(video.watch_url, filesNames)
                 # if in directory or restricted video...
@@ -222,13 +225,13 @@ class Ripper:
                     # add to files to download list
                     self.files_to_download.append(video)
                 # call callback
-                on_progress_callback(*self.get_values_for_callback_load(video, False))
+                callback_thread.set_function(lambda:on_progress_callback(*self.get_values_for_callback_load(video, False)))
             multi_thread.add(filter)
         # wait fot filtering to finish
         while multi_thread.is_alive(): 
             continue
         # call callback
-        on_progress_callback(*self.get_values_for_callback_load(None, True))
+        callback_thread.set_function(lambda:on_progress_callback(*self.get_values_for_callback_load(None, True)))
 
 
 # url = 'https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG'
