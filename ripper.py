@@ -8,6 +8,8 @@ import re
 import numpy as np
 import subprocess
 import tempfile
+from threading import Thread
+import shutil
 
 
 class Ripper:
@@ -37,7 +39,7 @@ class Ripper:
         self.stop = True
 
     def video_id_in_list(self, video_url: str, files_names: list[str]):
-        """Returns True if video id exists in list 
+        """Returns True if video id exists in list
         by checking for video id in the title"""
 
         # get video ID
@@ -49,8 +51,7 @@ class Ripper:
         for fileName in files_names:
             # if file found in directory ...
             if video_id_formatted in fileName:
-                print(
-                    f"file already exists   id:{video_id}   title:{fileName}")
+                print(f"file already exists   id:{video_id}   title:{fileName}")
                 # return true
                 return True
         # if not found ...
@@ -58,14 +59,16 @@ class Ripper:
             print(f"video added: {video_id}")
             # return false
             return False
-        
-    def get_values_for_callback_download(self, song:pytube.YouTube, i: int):
+
+    def get_values_for_callback_download(self, song: pytube.YouTube, is_finished: bool):
         # amount of files downloaded
         items_completed = len(self.files_downloaded)
         # files downloaded + files able to download
         amount_of_items = len(self.files_to_download) - len(self.unaccessable_videos)
-        # true if last element to download
-        is_finished = i == len(self.files_to_download) - 1
+        # if song not given ...
+        if song is None:
+            # return without song
+            return (items_completed, amount_of_items, "", is_finished)
         # try get title
         try:
             title = song.title
@@ -75,14 +78,20 @@ class Ripper:
             title = ""
         # return values to use
         return (items_completed, amount_of_items, title, is_finished)
-    
-    def get_values_for_callback_load(self, song: pytube.YouTube, i: int):
+
+    def get_values_for_callback_load(self, song: pytube.YouTube, is_finished: bool):
         # get amount of videos in total that can be downloaded
-        total_videos = len(self.playlist.videos) - len(self.files_in_folder) - len(self.files_age_restricted)
+        total_videos = (
+            len(self.playlist.videos)
+            - len(self.files_in_folder)
+            - len(self.files_age_restricted)
+        )
         # amount of videos loaded already
         amount_loaded = len(self.files_to_download)
-        # true if last element in playlist
-        is_finished = i == len(self.playlist.videos) - 1
+        # if song not given ...
+        if song is None:
+            # return values to use
+            return (amount_loaded, total_videos, "", is_finished)
         # try get title
         try:
             title = song.title
@@ -91,13 +100,17 @@ class Ripper:
             title = ""
         # return values to use
         return (amount_loaded, total_videos, title, is_finished)
-                
-    def download_audio(self,
-                       on_complete_callback: Callable[[int, int, str], any],
-                       on_progress_callback: Callable[[int, int, str], any],
-                       on_done_callback):
+
+    # 1671.7863901999954 seconds
+    def download_all_audio(
+        self,
+        on_complete_callback: Callable[[int, int, str], any],
+        on_progress_callback: Callable[[int, int, str], any],
+        on_done_callback,
+    ):
         """Gets list of YouTube objects and coverts them to mp3.
         Also adds video id at the end of the title"""
+        start_time = time.perf_counter()
         self.stop = False
         self.filter_playlist(on_progress_callback)
         # if stop button pressed ...
@@ -116,8 +129,8 @@ class Ripper:
                 # stop script
                 self.stop = False
                 break
-            # call callback function
-            on_complete_callback(*self.get_values_for_callback_download(video, i))
+            # call callback
+            on_complete_callback(*self.get_values_for_callback_download(video, False))
             # register callback to when file finishes downloading
             try:
                 # try create an audio stream
@@ -126,52 +139,64 @@ class Ripper:
                 # if error ...
                 # increment value
                 self.unaccessable_videos.append(video)
+                # call callback
+                on_complete_callback(
+                    *self.get_values_for_callback_download(video, False)
+                )
                 # skip to next video
                 continue
             else:
-                # download the file
-                audio.download(temp_dir)
-                # get the path
-                original_file_path = os.path.join(
-                    temp_dir, audio.default_filename)
-                # filename without extention
-                filename = audio.default_filename.removesuffix(".mp4")
-                # creates new file name
-                new_file_path = f"{self.dir}/{filename} [{video.video_id}].mp3"
-                # convert to mp3
-                subprocess.run(
-                    ["ffmpeg", "-i", original_file_path, new_file_path])
-                # add to list of files downloded
-                self.files_downloaded.append(video)
-                # delete original file
-                os.remove(original_file_path)
-                # call callback function if its the last iteration
-                is_last = i == len(self.files_to_download) - 1
-                if is_last:
-                    on_complete_callback(*self.get_values_for_callback_download(video, i))
 
+                def download():
+                    # download the file
+                    audio.download(temp_dir)
+                    # get the path
+                    original_file_path = os.path.join(temp_dir, audio.default_filename)
+                    # filename without extention
+                    filename = audio.default_filename.removesuffix(".mp4")
+                    # creates new file name
+                    new_file_path = f"{self.dir}/{filename} [{video.video_id}].mp3"
+                    # convert to mp3
+                    subprocess.run(["ffmpeg", "-i", original_file_path, new_file_path])
+                    # delete original file
+                    os.remove(original_file_path)
+                    # add to list of files downloded
+                    self.files_downloaded.append(video)
+                    # call callback function
+                    on_complete_callback(
+                        *self.get_values_for_callback_download(video, False)
+                    )
+
+                Thread(target=download)
+                end_time = time.perf_counter()
+                print(end_time - start_time)
+        # call callback
+        on_complete_callback(*self.get_values_for_callback_download(None, True))
         # remove temp file
         try:
-            os.rmdir(temp_dir)
+            shutil.rmtree(temp_dir)
         except FileNotFoundError:
             pass
         # call callback
         on_done_callback(self)
 
-    def filter_playlist(self, on_progress_callback: Callable[[int, int], any]) -> Tuple[pytube.YouTube, pytube.YouTube]:
+    def filter_playlist(
+        self, on_progress_callback: Callable[[int, int], any]
+    ) -> Tuple[pytube.YouTube, pytube.YouTube]:
         """Filters playlist into:
         a playlist of already in directory songs
-        and playlist of other songs """
+        and playlist of other songs"""
 
         # names of every file in directory
-        filesNames = [f for f in os.listdir(self.dir)
-                      if os.path.isfile(os.path.join(self.dir, f))]
+        filesNames = [
+            f for f in os.listdir(self.dir) if os.path.isfile(os.path.join(self.dir, f))
+        ]
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
             if self.stop == True:
                 break
             # call callback
-            on_progress_callback(*self.get_values_for_callback_load(video, i))
+            on_progress_callback(*self.get_values_for_callback_load(video, False))
             # if in directory
             file_exists = self.video_id_in_list(video.watch_url, filesNames)
             # if in directory or restricted video...
@@ -186,8 +211,9 @@ class Ripper:
                 # add to files to download list
                 self.files_to_download.append(video)
             # call callback
-            on_progress_callback(*self.get_values_for_callback_load(video, i))
-
+            on_progress_callback(*self.get_values_for_callback_load(video, False))
+        # call callback
+        on_progress_callback(*self.get_values_for_callback_load(None, True))
 
 
 # url = 'https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG'
