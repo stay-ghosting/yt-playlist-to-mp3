@@ -9,6 +9,8 @@ from threading import Thread
 from multiThread import *
 import shutil
 
+from threadQueue import ThreadQueue
+
 
 class Ripper:
     def __init__(self, dir: str, playlist_url: str):
@@ -122,6 +124,7 @@ class Ripper:
         temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
         # create a multi thread object
         multi_thread = MultiThread()
+        thread_queue = ThreadQueue()
         # for each video ...
         for i, video in enumerate(self.files_to_download):
             def download():
@@ -140,7 +143,7 @@ class Ripper:
                     # increment value
                     self.unaccessable_videos.append(video)
                     # call callback
-                    on_complete_callback(*self.get_values_for_callback_download(video, False))
+                    thread_queue.add(on_complete_callback(*self.get_values_for_callback_download(video, False)))
                     # skip to next video
                     return
                 else:
@@ -159,7 +162,7 @@ class Ripper:
                     # add to list of files downloded
                     self.files_downloaded.append(video)
                     # call callback function
-                    on_complete_callback(*self.get_values_for_callback_download(video, False))
+                    thread_queue.add(on_complete_callback(*self.get_values_for_callback_download(video, False)))
             # add download to thread
             multi_thread.add(download)
 

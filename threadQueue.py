@@ -3,6 +3,8 @@ from threading import Thread
 import time
 
 class ThreadQueue:
+    """runs functions synchronously on a single thread"""
+    
     def __init__(self):
         # queue of all functions to be called
         self._queue = Queue()
@@ -12,6 +14,7 @@ class ThreadQueue:
         self.is_alive = False
 
     def add(self, func):
+      """alows you to add a prosses to the queue"""
       # add function to the queue
       self._queue.put(func)
       # if thread NOT running ...
