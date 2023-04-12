@@ -22,13 +22,13 @@ class main():
 
 
     def initilaise_variables(self):
-        self.debug_url_input = ("https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-")
-        self.debug_dir_input = (r"D:\ribby\Music\songs\party")
+        # self.debug_url_input = ("https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-")
+        # self.debug_dir_input = (r"D:\ribby\Music\songs\party")
 
         self.url_input = ctk.StringVar()
-        self.url_input.set(self.debug_url_input)
+        # self.url_input.set(self.debug_url_input)
         self.dir_input = ctk.StringVar()
-        self.dir_input.set(self.debug_dir_input)
+        # self.dir_input.set(self.debug_dir_input)
 
         self.error_message_url = ctk.StringVar()
         self.error_message_dir = ctk.StringVar()
@@ -120,7 +120,7 @@ class main():
         main = ctk.CTkFrame(self.app)
 
         lbl_url = ctk.CTkLabel(main, text="Playlist URL:")
-        ety_url = ctk.CTkEntry(main, textvariable=self.url_input, placeholder_text="https://www.youtube.com/playlist?list=", width=600, border_width=0)
+        ety_url = ctk.CTkEntry(main, textvariable=self.url_input, placeholder_text="https://www.youtube.com/playlist?list=", width=700, border_width=0)
         ety_url.bind("<Key>", self.on_url_change)
         ety_url.bind("<Return>", lambda e: self.download_all())
         lbl_error_message_url = ctk.CTkLabel(main, textvariable=self.error_message_url, text_color="red")
