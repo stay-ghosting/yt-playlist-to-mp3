@@ -144,7 +144,7 @@ class main:
         ctk.set_appearance_mode("System")
         ctk.set_default_color_theme("blue")
 
-        self.app.geometry("800x500")
+        self.app.geometry("1000x500")
         self.app.title("YT Ripper")
 
         main = ctk.CTkFrame(self.app)
@@ -154,7 +154,7 @@ class main:
             main,
             textvariable=self.url_input,
             placeholder_text="https://www.youtube.com/playlist?list=",
-            width=600,
+            width=800,
             border_width=0,
         )
         ety_url.bind("<Key>", self.on_url_change)

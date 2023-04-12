@@ -39,12 +39,11 @@ class Ripper:
     def stop_download(self):
         self.stop = True
 
-    def video_id_in_list(self, video_url: str, files_names: list[str]):
+    def video_id_in_list(self, video: pytube.YouTube, files_names: list[str]):
         """Returns True if video id exists in list
         by checking for video id in the title"""
 
         # get video ID
-        video = pytube.YouTube(video_url)
         video_id = video.video_id
         video_id_formatted = f"[{video_id}]"
 
@@ -52,12 +51,10 @@ class Ripper:
         for fileName in files_names:
             # if file found in directory ...
             if video_id_formatted in fileName:
-                print(f"file already exists   id:{video_id}   title:{fileName}")
                 # return true
                 return True
         # if not found ...
         else:
-            print(f"video added: {video_id}")
             # return false
             return False
 
@@ -157,9 +154,12 @@ class Ripper:
                     # creates new file name
                     new_file_path = f"{self.dir}/{filename} [{video.video_id}].mp3"
                     # convert to mp3
-                    subprocess.run(["ffmpeg", "-i", original_file_path, new_file_path])
-                    # delete original file
-                    os.remove(original_file_path)
+                    subprocess.run(["ffmpeg", "-i", original_file_path, "-n", new_file_path])
+                    # try delete original file
+                    try:
+                        os.remove(original_file_path)
+                    except Exception:
+                        pass
                     # add to list of files downloded
                     self.files_downloaded.append(video)
                     # call callback function
@@ -200,38 +200,30 @@ class Ripper:
         filesNames = [
             f for f in os.listdir(self.dir) if os.path.isfile(os.path.join(self.dir, f))
         ]
-        # create thread objects
-        multi_thread = MultiThread()
-        callback_thread = OneFunctionThread()
 
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
-            def filter():
-                if self.stop == True:
-                    return
-                # call callback
-                callback_thread.set_function(lambda:on_progress_callback(*self.get_values_for_callback_load(video, False)))
-                # if in directory
-                file_exists = self.video_id_in_list(video.watch_url, filesNames)
-                # if in directory or restricted video...
-                if file_exists:
-                    # add to files in folder list
-                    self.files_in_folder.append(video)
-                # if file age restricted ...
-                elif video.age_restricted:
-                    # add to age restricted list
-                    self.files_age_restricted.append(video)
-                else:
-                    # add to files to download list
-                    self.files_to_download.append(video)
-                # call callback
-                callback_thread.set_function(lambda:on_progress_callback(*self.get_values_for_callback_load(video, False)))
-            multi_thread.add(filter)
-        # wait fot filtering to finish
-        while multi_thread.is_alive(): 
-            continue
+            if self.stop == True:
+                return
+            # call callback
+            on_progress_callback(*self.get_values_for_callback_load(video, False))
+            # if in directory
+            file_exists = self.video_id_in_list(video, filesNames)
+            # if in directory or restricted video...
+            if file_exists:
+                # add to files in folder list
+                self.files_in_folder.append(video)
+            # if file age restricted ...
+            elif video.age_restricted:
+                # add to age restricted list
+                self.files_age_restricted.append(video)
+            else:
+                # add to files to download list
+                self.files_to_download.append(video)
+            # call callback
+            on_progress_callback(*self.get_values_for_callback_load(video, False))
         # call callback
-        callback_thread.set_function(lambda:on_progress_callback(*self.get_values_for_callback_load(None, True)))
+        on_progress_callback(*self.get_values_for_callback_load(None, True))
 
 
 # url = 'https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG'
