@@ -1,5 +1,6 @@
 import os
 import pytube
+from pytube import exceptions
 from typing import Tuple, Callable
 import asyncio
 import time
@@ -59,8 +60,8 @@ class Ripper:
             return False
 
     def download_audio(self,
-                       on_complete_callback: Callable[[int, int], any],
-                       on_progress_callback: Callable[[int, int], any],
+                       on_complete_callback: Callable[[int, int, str], any],
+                       on_progress_callback: Callable[[int, int, str], any],
                        on_done_callback):
         """Gets list of YouTube objects and coverts them to mp3.
         Also adds video id at the end of the title"""
@@ -74,6 +75,7 @@ class Ripper:
         # reset variables
         self.files_downloaded = []
         self.unaccessable_videos = []
+        temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
         # for each video ...
         for i, video in enumerate(self.files_to_download):
             # if stop button pressed ...
@@ -81,8 +83,6 @@ class Ripper:
                 # stop script
                 self.stop = False
                 break
-            # amount of files to download
-            amount_of_files = len(self.files_to_download)
             # register callback to when file finishes downloading
             try:
                 # try create an audio stream
@@ -94,7 +94,6 @@ class Ripper:
                 # skip to next video
                 continue
             else:
-                temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
                 # download the file
                 audio.download(temp_dir)
                 # get the path
@@ -112,9 +111,10 @@ class Ripper:
                 # delete original file
                 os.remove(original_file_path)
                 # call callback function
-                on_complete_callback(
-                    len(self.files_downloaded) + 1, amount_of_files - len(self.unaccessable_videos))
-
+                items_completed = len(self.files_downloaded) - len(self.unaccessable_videos)
+                amount_of_items = len(self.files_to_download) - len(self.unaccessable_videos)
+                is_finished = i == len(self.files_to_download) - 1
+                on_complete_callback(items_completed, amount_of_items, filename, is_finished)
         # remove temp file
         try:
             os.rmdir(temp_dir)
@@ -151,8 +151,21 @@ class Ripper:
             # get amount of videos in total that can be downloaded
             total_videos = len(self.playlist.videos) - \
                 len(self.files_in_folder) - len(self.files_age_restricted)
-            # call callback function
-            on_progress_callback(i, total_videos)
+            # amount loaded
+            amount_loaded = len(self.files_to_download)
+            # true if last element in playlist
+            is_finished = i == len(self.playlist.videos) - 1
+            # try get title
+            try:
+                title = video.title
+            # if error ...
+            except exceptions.PytubeError:
+                # call callback with out title
+                on_progress_callback(amount_loaded, total_videos, is_finished=is_finished)
+            else:
+                # call callback with title
+                on_progress_callback(amount_loaded, total_videos, title, is_finished)
+
 
 
 # url = 'https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG'
