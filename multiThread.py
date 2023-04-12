@@ -3,19 +3,27 @@ from typing import Callable
 
 
 class MultiThread:
+    """allows you to run multiple threads with add method.
+    is alive method allows you to check if all threads are complete"""
+    
     def __init__(self):
         # list of all the functions currently running
-        self.functions_running: list[Callable] = []
+        self._functions_running: list[Callable] = []
 
     def add(self, func: Callable):
+        """runs on a new thread"""
         Thread(target=lambda:(
-            self.functions_running.append(func),
+            # add it to list
+            self._functions_running.append(func),
+            # do task
             func(),
-            self.functions_running.remove(func)
+            # remove it from list
+            self._functions_running.remove(func)
         )).start()
         
     def is_alive(self):
-        return len(self.functions_running) == 0
+        """True if 1 or more thread is still running"""
+        return len(self._functions_running) == 0
 
 
 
