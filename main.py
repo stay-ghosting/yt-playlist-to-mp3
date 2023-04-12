@@ -9,6 +9,7 @@ from threadQueue import ThreadQueue
 # TODO make logs
 # TODO add threaded downloads
 # TODO time elapsed
+# TODO fix video_id_in_list
 
 
 class main:
