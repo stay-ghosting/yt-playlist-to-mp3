@@ -18,6 +18,7 @@ class Ripper:
         self.files_age_restricted: list[pytube.YouTube] = []
         self.unaccessable_videos: list[pytube.YouTube] = []
         self.files_downloaded: list[pytube.YouTube] = []
+        self.stop = False
 
     def is_valid_playlist(self):
         """True if playlist exists"""
@@ -30,6 +31,9 @@ class Ripper:
         # if found ... return True
         else:
             return True
+    
+    def stop_download(self):
+        self.stop = True
 
     def video_id_in_list(self, video_url: str, files_names: list[str]):
         """Returns True if video id exists in list 
@@ -60,12 +64,16 @@ class Ripper:
                        on_done_callback):
         """Gets list of YouTube objects and coverts them to mp3.
         Also adds video id at the end of the title"""
+        self.stop = False
         self.filter_playlist(on_progress_callback)
         # reset variables
         self.files_downloaded = []
         self.unaccessable_videos = []
         # for each video ...
         for i, video in enumerate(self.files_to_download):
+            if self.stop == True:
+                self.stop = False
+                break
             # amount of files to download
             amount_of_files = len(self.files_to_download)
             # register callback to when file finishes downloading
@@ -98,9 +106,13 @@ class Ripper:
                 # call callback function
                 on_complete_callback(
                     len(self.files_downloaded) + 1, amount_of_files - len(self.unaccessable_videos))
-            # remove temp file
-            os.rmdir(temp_dir)
 
+        # remove temp file
+        try:
+            os.rmdir(temp_dir)
+        except FileNotFoundError:
+            pass
+        # call callback
         on_done_callback(self)
 
     def filter_playlist(self, on_progress_callback: Callable[[int, int], any]) -> Tuple[pytube.YouTube, pytube.YouTube]:
@@ -113,6 +125,9 @@ class Ripper:
                       if os.path.isfile(os.path.join(self.dir, f))]
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
+            if self.stop == True:
+                self.stop = False
+                break
             # if in directory
             file_exists = self.video_id_in_list(video.watch_url, filesNames)
             # if in directory or restricted video...
