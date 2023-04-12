@@ -8,16 +8,17 @@ import numpy as np
 import subprocess
 import tempfile
 
+
 class Ripper:
     def __init__(self, dir: str, playlist_url: str):
         self.dir = dir
         self.playlist = pytube.Playlist(playlist_url)
-        self.files_to_download : list[pytube.YouTube] = []
-        self.files_in_folder : list[pytube.YouTube] = []
-        self.files_age_restricted : list[pytube.YouTube] = []
-        self.unaccessable_videos : list[pytube.YouTube] = []
-        self.files_downloaded : list[pytube.YouTube] = []
-    
+        self.files_to_download: list[pytube.YouTube] = []
+        self.files_in_folder: list[pytube.YouTube] = []
+        self.files_age_restricted: list[pytube.YouTube] = []
+        self.unaccessable_videos: list[pytube.YouTube] = []
+        self.files_downloaded: list[pytube.YouTube] = []
+
     def is_valid_playlist(self):
         """True if playlist exists"""
         # try ... get length of playlist
@@ -29,7 +30,7 @@ class Ripper:
         # if found ... return True
         else:
             return True
-    
+
     def video_id_in_list(self, video_url: str, files_names: list[str]):
         """Returns True if video id exists in list 
         by checking for video id in the title"""
@@ -38,12 +39,13 @@ class Ripper:
         video = pytube.YouTube(video_url)
         video_id = video.video_id
         video_id_formatted = f"[{video_id}]"
-        
+
         # for each file ...
         for fileName in files_names:
             # if file found in directory ...
             if video_id_formatted in fileName:
-                print(f"file already exists   id:{video_id}   title:{fileName}")
+                print(
+                    f"file already exists   id:{video_id}   title:{fileName}")
                 # return true
                 return True
         # if not found ...
@@ -51,8 +53,8 @@ class Ripper:
             print(f"video added: {video_id}")
             # return false
             return False
-    
-    def download_audio(self, 
+
+    def download_audio(self,
                        on_complete_callback: Callable[[int, int], any],
                        on_progress_callback: Callable[[int, int], any],
                        on_done_callback):
@@ -71,28 +73,33 @@ class Ripper:
                 # try create an audio stream
                 audio = video.streams.filter(only_audio=True).first()
             except KeyError:
-                # if error ... 
+                # if error ...
                 # increment value
                 self.unaccessable_videos.append(video)
                 # skip to next video
                 continue
             else:
+                temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
                 # download the file
-                audio.download(self.dir)
+                audio.download(temp_dir)
                 # get the path
-                original_file_path = os.path.join(self.dir, audio.default_filename)
+                original_file_path = os.path.join(temp_dir, audio.default_filename)
+                # filename without extention
+                filename = audio.default_filename.removesuffix(".mp4")
                 # creates new file name
-                new_file_name = f"{os.path.splitext(original_file_path)[0]} [{video.video_id}].mp3"
-                # creates new path
-                new_file_path = os.path.join(self.dir, new_file_name)
+                new_file_path = f"{self.dir}/{filename} [{video.video_id}].mp3"
                 # convert to mp3
-                subprocess.run(["ffmpeg", "-i", original_file_path, new_file_name])
+                subprocess.run(
+                    ["ffmpeg", "-i", original_file_path, new_file_path])
                 # add to list of files downloded
                 self.files_downloaded.append(video)
                 # delete original file
                 os.remove(original_file_path)
                 # call callback function
-                on_complete_callback(len(self.files_downloaded) + 1, amount_of_files - len(self.unaccessable_videos))
+                on_complete_callback(
+                    len(self.files_downloaded) + 1, amount_of_files - len(self.unaccessable_videos))
+            # remove temp file
+            os.rmdir(temp_dir)
 
         on_done_callback(self)
 
@@ -102,8 +109,8 @@ class Ripper:
         and playlist of other songs """
 
         # names of every file in directory
-        filesNames = [f for f in os.listdir(self.dir) 
-                    if os.path.isfile(os.path.join(self.dir, f))]
+        filesNames = [f for f in os.listdir(self.dir)
+                      if os.path.isfile(os.path.join(self.dir, f))]
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
             # if in directory
@@ -116,11 +123,12 @@ class Ripper:
             elif video.age_restricted:
                 # add to age restricted list
                 self.files_age_restricted.append(video)
-            else:    
+            else:
                 # add to files to download list
                 self.files_to_download.append(video)
             # get amount of videos in total that can be downloaded
-            total_videos = len(self.playlist.videos) - len(self.files_in_folder) - len(self.files_age_restricted)
+            total_videos = len(self.playlist.videos) - \
+                len(self.files_in_folder) - len(self.files_age_restricted)
             # call callback function
             on_progress_callback(i, total_videos)
 
