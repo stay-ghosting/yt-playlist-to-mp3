@@ -31,7 +31,7 @@ class Ripper:
         # if found ... return True
         else:
             return True
-    
+
     def stop_download(self):
         self.stop = True
 
@@ -66,12 +66,19 @@ class Ripper:
         Also adds video id at the end of the title"""
         self.stop = False
         self.filter_playlist(on_progress_callback)
+        # if stop button pressed ...
+        if self.stop == True:
+            # stop script
+            self.stop = False
+            return
         # reset variables
         self.files_downloaded = []
         self.unaccessable_videos = []
         # for each video ...
         for i, video in enumerate(self.files_to_download):
+            # if stop button pressed ...
             if self.stop == True:
+                # stop script
                 self.stop = False
                 break
             # amount of files to download
@@ -91,7 +98,8 @@ class Ripper:
                 # download the file
                 audio.download(temp_dir)
                 # get the path
-                original_file_path = os.path.join(temp_dir, audio.default_filename)
+                original_file_path = os.path.join(
+                    temp_dir, audio.default_filename)
                 # filename without extention
                 filename = audio.default_filename.removesuffix(".mp4")
                 # creates new file name
@@ -126,7 +134,6 @@ class Ripper:
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
             if self.stop == True:
-                self.stop = False
                 break
             # if in directory
             file_exists = self.video_id_in_list(video.watch_url, filesNames)

@@ -8,13 +8,11 @@ from threadQueue import ThreadQueue
 
 # TODO create json save - recents/ key
 # TODO make logs
-# TODO add tags to filenames so file_exists_in_folder can find it
-# TODO convert to mp3
-# TODO fix load bar when invalid loads come up
 
 class main():
     def __init__(self):
         self.app = ctk.CTk()
+        self.t = ThreadQueue()
         self.ripper : None or Ripper = None
         self.initilaise_variables()
         self.draw_screen()
@@ -80,9 +78,8 @@ class main():
         if has_error_occured:
             return
         
-        t = ThreadQueue()
-        t.add(lambda:print(1))
-        t.add(lambda:self.ripper.download_audio(self.on_file_downloaded, self.on_file_loaded, self.on_finish_downloading))
+        self.t.add(lambda:print(1))
+        self.t.add(lambda:self.ripper.download_audio(self.on_file_downloaded, self.on_file_loaded, self.on_finish_downloading))
     
   
     def on_finish_downloading(self, ripper: Ripper):
@@ -97,6 +94,8 @@ class main():
     def on_cancel_download(self):
         if self.ripper is not None:
             self.ripper.stop_download()
+            self.t.add(lambda:self.on_file_loaded(0, 0))
+            self.t.add(lambda:self.on_file_downloaded(0, 0))
 
     def on_change_directory(self):
         dir_input_temp = filedialog.askdirectory()
@@ -118,7 +117,7 @@ class main():
         main = ctk.CTkFrame(self.app)
 
         lbl_url = ctk.CTkLabel(main, text="Playlist URL:")
-        ety_url = ctk.CTkEntry(main, bg_color="#323332", textvariable=self.url_input, placeholder_text="https://www.youtube.com/playlist?list=", width=600, border_width=0)
+        ety_url = ctk.CTkEntry(main, textvariable=self.url_input, placeholder_text="https://www.youtube.com/playlist?list=", width=600, border_width=0)
         ety_url.bind("<Key>", self.on_url_change)
         ety_url.bind("<Return>", lambda e: self.download_all())
         lbl_error_message_url = ctk.CTkLabel(main, textvariable=self.error_message_url, text_color="red")
@@ -136,7 +135,7 @@ class main():
         all_files_progress_bar = ctk.CTkProgressBar(main, variable=self.lbl_all_files_progress_bar_value)
         all_files_progress_bar.set(0)
 
-        frm_download_buttons = ctk.CTkFrame(main, fg_color="#2A2A2B")
+        frm_download_buttons = ctk.CTkFrame(main, fg_color="transparent")
         btn_stop_download = ctk.CTkButton(frm_download_buttons, text="Stop Download", command=lambda: self.on_cancel_download())
         btn_download = ctk.CTkButton(frm_download_buttons, text="Start Download", command=lambda: self.download_all())
 
@@ -155,7 +154,7 @@ class main():
         lbl_all_files_progress_bar.pack(anchor=ctk.W, padx=(30,0))
         all_files_progress_bar.pack(fill=ctk.BOTH, padx=20, pady=5)
 
-        frm_download_buttons.pack(pady=(30,30))
+        frm_download_buttons.pack(pady=(40,30))
         btn_stop_download.pack(padx=10, side=ctk.LEFT)
         btn_download.pack(padx=10)
         main.place(relx=0.5, rely=0.5, anchor=ctk.CENTER)
