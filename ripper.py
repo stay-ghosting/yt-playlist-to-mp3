@@ -2,13 +2,11 @@ import os
 import pytube
 from pytube import exceptions
 from typing import Tuple, Callable
-import asyncio
 import time
-import re
-import numpy as np
 import subprocess
 import tempfile
 from threading import Thread
+from multiThread import *
 import shutil
 
 
@@ -122,32 +120,30 @@ class Ripper:
         self.files_downloaded = []
         self.unaccessable_videos = []
         temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
+        # create a multi thread object
+        multi_thread = MultiThread()
         # for each video ...
         for i, video in enumerate(self.files_to_download):
-            # if stop button pressed ...
-            if self.stop == True:
-                # stop script
-                self.stop = False
-                break
-            # call callback
-            on_complete_callback(*self.get_values_for_callback_download(video, False))
-            # register callback to when file finishes downloading
-            try:
-                # try create an audio stream
-                audio = video.streams.filter(only_audio=True).first()
-            except KeyError:
-                # if error ...
-                # increment value
-                self.unaccessable_videos.append(video)
+            def download():
+                # if stop button pressed ...
+                if self.stop == True:
+                    # stop script
+                    return
                 # call callback
-                on_complete_callback(
-                    *self.get_values_for_callback_download(video, False)
-                )
-                # skip to next video
-                continue
-            else:
-
-                def download():
+                on_complete_callback(*self.get_values_for_callback_download(video, False))
+                # register callback to when file finishes downloading
+                try:
+                    # try create an audio stream
+                    audio = video.streams.filter(only_audio=True).first()
+                except KeyError:
+                    # if error ...
+                    # increment value
+                    self.unaccessable_videos.append(video)
+                    # call callback
+                    on_complete_callback(*self.get_values_for_callback_download(video, False))
+                    # skip to next video
+                    return
+                else:
                     # download the file
                     audio.download(temp_dir)
                     # get the path
@@ -163,22 +159,31 @@ class Ripper:
                     # add to list of files downloded
                     self.files_downloaded.append(video)
                     # call callback function
-                    on_complete_callback(
-                        *self.get_values_for_callback_download(video, False)
-                    )
+                    on_complete_callback(*self.get_values_for_callback_download(video, False))
+            # add download to thread
+            multi_thread.add(download)
 
-                Thread(target=download)
-                end_time = time.perf_counter()
-                print(end_time - start_time)
-        # call callback
-        on_complete_callback(*self.get_values_for_callback_download(None, True))
+        # wait for all downloads to finish
+        while multi_thread.is_alive(): 
+            continue
+
         # remove temp file
         try:
             shutil.rmtree(temp_dir)
         except FileNotFoundError:
             pass
-        # call callback
+
+        # stop script stop is True
+        if self.stop == True:
+            self.stop = False
+            return
+
+        # call callbacks
+        on_complete_callback(*self.get_values_for_callback_download(None, True))
         on_done_callback(self)
+
+        end_time = time.perf_counter()
+        print(end_time - start_time)
 
     def filter_playlist(
         self, on_progress_callback: Callable[[int, int], any]
@@ -191,27 +196,34 @@ class Ripper:
         filesNames = [
             f for f in os.listdir(self.dir) if os.path.isfile(os.path.join(self.dir, f))
         ]
+        # create a multi thread object
+        multi_thread = MultiThread()
         # for video in playlist ...
         for i, video in enumerate(self.playlist.videos):
-            if self.stop == True:
-                break
-            # call callback
-            on_progress_callback(*self.get_values_for_callback_load(video, False))
-            # if in directory
-            file_exists = self.video_id_in_list(video.watch_url, filesNames)
-            # if in directory or restricted video...
-            if file_exists:
-                # add to files in folder list
-                self.files_in_folder.append(video)
-            # if file age restricted ...
-            elif video.age_restricted:
-                # add to age restricted list
-                self.files_age_restricted.append(video)
-            else:
-                # add to files to download list
-                self.files_to_download.append(video)
-            # call callback
-            on_progress_callback(*self.get_values_for_callback_load(video, False))
+            def filter():
+                if self.stop == True:
+                    return
+                # call callback
+                on_progress_callback(*self.get_values_for_callback_load(video, False))
+                # if in directory
+                file_exists = self.video_id_in_list(video.watch_url, filesNames)
+                # if in directory or restricted video...
+                if file_exists:
+                    # add to files in folder list
+                    self.files_in_folder.append(video)
+                # if file age restricted ...
+                elif video.age_restricted:
+                    # add to age restricted list
+                    self.files_age_restricted.append(video)
+                else:
+                    # add to files to download list
+                    self.files_to_download.append(video)
+                # call callback
+                on_progress_callback(*self.get_values_for_callback_load(video, False))
+            multi_thread.add(filter)
+        # wait fot filtering to finish
+        while multi_thread.is_alive(): 
+            continue
         # call callback
         on_progress_callback(*self.get_values_for_callback_load(None, True))
 
