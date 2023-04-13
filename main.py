@@ -38,7 +38,7 @@ class main:
         self.lbl_file_load_progress_bar_text = ctk.StringVar()
         self.lbl_file_load_progress_bar_value = ctk.DoubleVar()
         self.on_file_loaded = self.progress(
-            "File Load Progress:",
+            "Getting Songs:",
             self.lbl_file_load_progress_bar_text,
             self.lbl_file_load_progress_bar_value,
         )
@@ -47,7 +47,7 @@ class main:
         self.lbl_all_files_progress_bar_text = ctk.StringVar()
         self.lbl_all_files_progress_bar_value = ctk.DoubleVar()
         self.on_file_downloaded = self.progress(
-            "Download Progress:",
+            "Downloading Songs:",
             self.lbl_all_files_progress_bar_text,
             self.lbl_all_files_progress_bar_value,
         )
@@ -62,15 +62,16 @@ class main:
         ):
             if is_finished:
                 value = 1
-                text.set(f"{message} {items_completed} / {amount_of_items} - Done!")
+                text.set(f"{message} {items_completed} / {amount_of_items}\nDone!")
             elif items_completed + amount_of_items <= 0:
                 value = 0
-                text.set(message)
+                text.set(f"{message}\n")
             else:
                 value = round(items_completed / amount_of_items, 2)
                 text.set(
-                    f"{message} {items_completed} / {amount_of_items} - {filename}"
+                    f"{message} {items_completed} / {amount_of_items}\n{filename}"
                 )
+            self.app.update()
 
             progress.set(value)
 
@@ -175,14 +176,14 @@ class main:
         )
 
         lbl_file_load_progress_bar = ctk.CTkLabel(
-            main, textvariable=self.lbl_file_load_progress_bar_text
+            main, textvariable=self.lbl_file_load_progress_bar_text, justify=ctk.LEFT
         )
         file_load_progress_bar = ctk.CTkProgressBar(
             main, variable=self.lbl_file_load_progress_bar_value
         )
         file_load_progress_bar.set(0)
         lbl_all_files_progress_bar = ctk.CTkLabel(
-            main, textvariable=self.lbl_all_files_progress_bar_text
+            main, textvariable=self.lbl_all_files_progress_bar_text, justify=ctk.LEFT
         )
         all_files_progress_bar = ctk.CTkProgressBar(
             main, variable=self.lbl_all_files_progress_bar_value
@@ -212,7 +213,7 @@ class main:
         lbl_error_message_dir.pack(pady=(4, 4))
 
         lbl_file_load_progress_bar.pack(anchor=ctk.W, padx=(30, 0))
-        file_load_progress_bar.pack(fill=ctk.BOTH, padx=20, pady=(5, 15))
+        file_load_progress_bar.pack(fill=ctk.BOTH, padx=20, pady=(5, 30))
         lbl_all_files_progress_bar.pack(anchor=ctk.W, padx=(30, 0))
         all_files_progress_bar.pack(fill=ctk.BOTH, padx=20, pady=5)
 

@@ -5,10 +5,7 @@ from typing import Tuple, Callable
 import time
 import subprocess
 import tempfile
-from threading import Thread
-from multiThread import *
 import shutil
-from oneFunctionThead import OneFunctionThread
 
 from threadQueue import ThreadQueue
 
@@ -120,61 +117,58 @@ class Ripper:
         self.files_downloaded = []
         self.unaccessable_videos = []
         temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
-        # create thread objects
-        multi_thread = MultiThread()
-        callback_thread = OneFunctionThread()
-        # for each video ...
-        for i, video in enumerate(self.files_to_download):
-            def download():
-                # if stop button pressed ...
-                if self.stop == True:
-                    # stop script
-                    return
-                # call callback
-                callback_thread.set_function(lambda:on_complete_callback(*self.get_values_for_callback_download(video, False)))
-                # register callback to when file finishes downloading
-                try:
-                    # try create an audio stream
-                    audio = video.streams.filter(only_audio=True).first()
-                except KeyError:
-                    # if error ...
-                    # increment value
-                    self.unaccessable_videos.append(video)
-                    # call callback
-                    callback_thread.set_function(lambda:on_complete_callback(*self.get_values_for_callback_download(video, False)))
-                    # skip to next video
-                    return
-                else:
-                    # download the file
-                    audio.download(temp_dir)
-                    # get the path
-                    original_file_path = os.path.join(temp_dir, audio.default_filename)
-                    # filename without extention
-                    filename = audio.default_filename.removesuffix(".mp4")
-                    # creates new file name
-                    new_file_path = f"{self.dir}/{filename} [{video.video_id}].mp3"
-                    # convert to mp3
-                    subprocess.run(["ffmpeg", "-i", original_file_path, "-n", new_file_path])
-                    # try delete original file
-                    try:
-                        os.remove(original_file_path)
-                    except Exception:
-                        pass
-                    # add to list of files downloded
-                    self.files_downloaded.append(video)
-                    # call callback function
-                    callback_thread.set_function(lambda:on_complete_callback(*self.get_values_for_callback_download(video, False)))
-            # add download to thread
-            multi_thread.add(download)
-
-        # wait for all downloads to finish
-        while multi_thread.is_alive(): 
-            continue
 
         # remove temp file
         try:
             shutil.rmtree(temp_dir)
-        except FileNotFoundError:
+        except Exception:
+            pass
+
+        # for each video ...
+        for i, video in enumerate(self.files_to_download):
+            # if stop button pressed ...
+            if self.stop == True:
+                # stop script
+                return
+            # call callback
+            on_complete_callback(*self.get_values_for_callback_download(video, False))
+            # register callback to when file finishes downloading
+            try:
+                # try create an audio stream
+                audio = video.streams.filter(only_audio=True).first()
+            except KeyError:
+                # if error ...
+                # increment value
+                self.unaccessable_videos.append(video)
+                # call callback
+                on_complete_callback(*self.get_values_for_callback_download(video, False))
+                # skip to next video
+                return
+            else:
+                # download the file
+                audio.download(temp_dir)
+                # get the path
+                original_file_path = os.path.join(temp_dir, audio.default_filename)
+                # filename without extention
+                filename = audio.default_filename.removesuffix(".mp4")
+                # creates new file name
+                new_file_path = f"{self.dir}/{filename} [{video.video_id}].mp3"
+                # convert to mp3
+                subprocess.run(["ffmpeg", "-y", "-i", original_file_path, new_file_path])
+                # try delete original file
+                try:
+                    os.remove(original_file_path)
+                except Exception:
+                    pass
+                # add to list of files downloded
+                self.files_downloaded.append(video)
+                # call callback function
+                on_complete_callback(*self.get_values_for_callback_download(video, False))
+                
+        # remove temp file
+        try:
+            shutil.rmtree(temp_dir)
+        except Exception:
             pass
 
         # stop script stop is True
