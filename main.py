@@ -27,9 +27,9 @@ class main:
         self.debug_dir_input = r"D:\ribby\Music\songs\party"
 
         self.url_input = ctk.StringVar()
-        self.url_input.set(self.debug_url_input)
+        # self.url_input.set(self.debug_url_input)
         self.dir_input = ctk.StringVar()
-        self.dir_input.set(self.debug_dir_input)
+        # self.dir_input.set(self.debug_dir_input)
 
         self.error_message_url = ctk.StringVar()
         self.error_message_dir = ctk.StringVar()
