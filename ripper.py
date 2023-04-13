@@ -105,7 +105,6 @@ class Ripper:
     ):
         """Gets list of YouTube objects and coverts them to mp3.
         Also adds video id at the end of the title"""
-        start_time = time.perf_counter()
         self.stop = False
         self.filter_playlist(on_progress_callback)
         # if stop button pressed ...
@@ -129,6 +128,7 @@ class Ripper:
             # if stop button pressed ...
             if self.stop == True:
                 # stop script
+                self.stop = False
                 return
             # call callback
             on_complete_callback(*self.get_values_for_callback_download(video, False))
@@ -140,10 +140,8 @@ class Ripper:
                 # if error ...
                 # increment value
                 self.unaccessable_videos.append(video)
-                # call callback
-                on_complete_callback(*self.get_values_for_callback_download(video, False))
-                # skip to next video
-                return
+                # go to next
+                continue
             else:
                 # download the file
                 audio.download(temp_dir)
@@ -154,7 +152,7 @@ class Ripper:
                 # creates new file name
                 new_file_path = f"{self.dir}/{filename} [{video.video_id}].mp3"
                 # convert to mp3
-                subprocess.run(["ffmpeg", "-y", "-i", original_file_path, new_file_path])
+                subprocess.run(["ffmpeg", "-nostdin", "-i", original_file_path, new_file_path])
                 # try delete original file
                 try:
                     os.remove(original_file_path)
@@ -162,8 +160,11 @@ class Ripper:
                     pass
                 # add to list of files downloded
                 self.files_downloaded.append(video)
-                # call callback function
-                on_complete_callback(*self.get_values_for_callback_download(video, False))
+                # if last video ... 
+                is_last_video = i == len(self.files_to_download) - 1
+                if is_last_video:
+                    # call callback function
+                    on_complete_callback(*self.get_values_for_callback_download(video, False))
                 
         # remove temp file
         try:
@@ -171,17 +172,10 @@ class Ripper:
         except Exception:
             pass
 
-        # stop script stop is True
-        if self.stop == True:
-            self.stop = False
-            return
-
         # call callbacks
         on_complete_callback(*self.get_values_for_callback_download(None, True))
         on_done_callback(self)
 
-        end_time = time.perf_counter()
-        print(end_time - start_time)
 
     def filter_playlist(
         self, on_progress_callback: Callable[[int, int], any]
@@ -214,8 +208,6 @@ class Ripper:
             else:
                 # add to files to download list
                 self.files_to_download.append(video)
-            # call callback
-            on_progress_callback(*self.get_values_for_callback_load(video, False))
         # call callback
         on_progress_callback(*self.get_values_for_callback_load(None, True))
 
