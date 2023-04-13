@@ -7,10 +7,9 @@ from threadQueue import ThreadQueue
 
 # TODO create json save - recents/ key
 # TODO make logs
-# TODO add threaded downloads
 # TODO time elapsed
-# TODO fix video_id_in_list
-
+# TODO change the height
+# TODO add ffmpeg python library
 
 class main:
     def __init__(self):
