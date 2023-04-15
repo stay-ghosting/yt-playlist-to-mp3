@@ -1,13 +1,11 @@
+from copy import deepcopy
 import os
 import pytube
 from pytube import exceptions
 from typing import Tuple, Callable
-import time
 import subprocess
 import tempfile
 import shutil
-
-from threadQueue import ThreadQueue
 
 
 class Ripper:
@@ -20,6 +18,7 @@ class Ripper:
         self.unaccessable_videos: list[pytube.YouTube] = []
         self.files_downloaded: list[pytube.YouTube] = []
         self.stop = False
+        self.debug_load_times = []
 
     def is_valid_playlist(self):
         """True if playlist exists"""
@@ -54,6 +53,7 @@ class Ripper:
         else:
             # return false
             return False
+        
 
     def get_values_for_callback_download(self, song: pytube.YouTube, is_finished: bool):
         # amount of files downloaded
@@ -190,13 +190,15 @@ class Ripper:
         ]
 
         # for video in playlist ...
-        for i, video in enumerate(self.playlist.videos):
+        for video in self.playlist.videos:
             if self.stop == True:
                 return
             # call callback
-            on_progress_callback(*self.get_values_for_callback_load(video, False))
+            values = self.get_values_for_callback_load(video, False)
+            on_progress_callback(*values)
             # if in directory
             file_exists = self.video_id_in_list(video, filesNames)
+            
             # if in directory or restricted video...
             if file_exists:
                 # add to files in folder list
@@ -208,6 +210,8 @@ class Ripper:
             else:
                 # add to files to download list
                 self.files_to_download.append(video)
+
+
         # call callback
         on_progress_callback(*self.get_values_for_callback_load(None, True))
 
