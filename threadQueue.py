@@ -3,18 +3,24 @@ from threading import Thread
 import time
 
 class ThreadQueue:
+    """runs functions synchronously on a single thread"""
+    
     def __init__(self):
+        # queue of all functions to be called
         self._queue = Queue()
+        # the thread 
         self._thread = None
-        self.is_finished = True
+        # true if thead is running
+        self.is_alive = False
 
     def add(self, func):
+      """alows you to add a prosses to the queue"""
       # add function to the queue
       self._queue.put(func)
       # if thread NOT running ...
-      if self.is_finished == True:
-        # set finished to False
-        self.is_finished = False
+      if self.is_alive == False:
+        # set thead to running
+        self.is_alive = True
         # creates a thread that recursivley calls functions in the queue
         self._thread = Thread(target=lambda:self._do_function()).start()
 
@@ -23,8 +29,8 @@ class ThreadQueue:
       try:
         first = self._queue.get()
       except Empty:
-        # if queue is empty ... set finished to True
-          self.is_finished = True
+        # if queue is empty ... set thread to NOT running
+          self.is_alive = False
       else:
         # run the first item of the queue
         first()
