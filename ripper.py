@@ -66,15 +66,11 @@ class Ripper:
         )
         total_videos_loaded = len(self.files_to_download)
         if song is None:
-            # return values to use
             return (total_videos_loaded, total_videos_to_download, "", is_finished)
-        # try get title
         try:
             title = song.title
-        # if error ...
         except exceptions.PytubeError:
             title = ""
-        # return values to use
         return (total_videos_loaded, total_videos_to_download, title, is_finished)
 
     def download_all_audio(
@@ -87,72 +83,47 @@ class Ripper:
         Also adds video id at the end of the title"""
         self.stop = False
         self.filter_playlist(update_loading_text_cb)
-        # if stop button pressed ...
         if self.stop == True:
-            # stop script
             self.stop = False
             return
-        # reset variables
         self.files_downloaded = []
         self.unaccessable_videos = []
         temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
 
-        # remove temp file
         try:
             shutil.rmtree(temp_dir)
         except Exception:
             pass
 
-        # for each video ...
         for i, video in enumerate(self.files_to_download):
-            # if stop button pressed ...
             if self.stop == True:
-                # stop script
                 self.stop = False
                 return
-            # call callback
             update_downloading_text_cb(*self.get_values_for_downloading_text(video, False))
-            # register callback to when file finishes downloading
             try:
-                # try create an audio stream
                 audio = video.streams.filter(only_audio=True).first()
             except KeyError:
-                # if error ...
-                # increment value
                 self.unaccessable_videos.append(video)
-                # go to next
                 continue
             else:
-                # download the file
                 audio.download(temp_dir)
-                # get the path
-                original_file_path = os.path.join(temp_dir, audio.default_filename)
-                # filename without extention
+                audio_temp_file_path = os.path.join(temp_dir, audio.default_filename)
                 filename = audio.default_filename.removesuffix(".mp4")
-                # creates new file name
                 new_file_path = f"{self.dir}/{filename} [{video.video_id}].mp3"
-                # convert to mp3
-                subprocess.run(["ffmpeg", "-nostdin", "-i", original_file_path, new_file_path])
-                # try delete original file
+                subprocess.run(["ffmpeg", "-nostdin", "-i", audio_temp_file_path, new_file_path])
                 try:
-                    os.remove(original_file_path)
+                    os.remove(audio_temp_file_path)
                 except Exception:
                     pass
-                # add to list of files downloded
                 self.files_downloaded.append(video)
-                # if last video ... 
                 is_last_video = i == len(self.files_to_download) - 1
                 if is_last_video:
-                    # call callback function
                     update_downloading_text_cb(*self.get_values_for_downloading_text(video, False))
-                
-        # remove temp file
         try:
             shutil.rmtree(temp_dir)
         except Exception:
             pass
 
-        # call callbacks
         update_downloading_text_cb(*self.get_values_for_downloading_text(None, True))
         show_download_complete_message_cb(self)
 
@@ -184,7 +155,3 @@ class Ripper:
 
         values_for_loading_text = self.get_values_for_loading_text(None, True)
         update_loading_text_cb(*values_for_loading_text)
-
-
-# files_in_folder, files_to_download = filter_playlist(url, dir)
-# download_audio(files_to_download, dir)
