@@ -9,6 +9,8 @@ from threadQueue import ThreadQueue
 # TODO make logs
 # TODO time elapsed
 # TODO settings
+# TODO fix closing app down still running
+# TODO pause download
 
 class main:
     def __init__(self):
@@ -21,9 +23,9 @@ class main:
 
     def initilaise_variables(self):
         self.debug_url_input = (
-            "https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-"
+            "https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfwXBQMv5qRXgyQ_KcrLRxs"
         )
-        self.debug_dir_input = r"D:\ribby\Music\songs\party"
+        self.debug_dir_input = r"E:\Projects\yt-playlist-to-mp3\playlist"
 
         self.url_input = ctk.StringVar()
         self.url_input.set(self.debug_url_input)
@@ -35,23 +37,23 @@ class main:
 
         self.lbl_file_load_progress_bar_text = ctk.StringVar()
         self.lbl_file_load_progress_bar_value = ctk.DoubleVar()
-        self.on_file_loaded = self.progress(
+        self.update_loading_text = self.create_progress_messages(
             "Getting Songs:",
             self.lbl_file_load_progress_bar_text,
             self.lbl_file_load_progress_bar_value,
         )
-        self.on_file_loaded(0, 0)
+        self.update_loading_text(0, 0)
 
         self.lbl_all_files_progress_bar_text = ctk.StringVar()
         self.lbl_all_files_progress_bar_value = ctk.DoubleVar()
-        self.on_file_downloaded = self.progress(
+        self.update_downloading_text = self.create_progress_messages(
             "Downloading Songs:",
             self.lbl_all_files_progress_bar_text,
             self.lbl_all_files_progress_bar_value,
         )
-        self.on_file_downloaded(0, 0)
+        self.update_downloading_text(0, 0)
 
-    def progress(self, message: str, text: ctk.StringVar, progress: ctk.DoubleVar):
+    def create_progress_messages(self, message: str, text: ctk.StringVar, progress: ctk.DoubleVar):
         def progressAndMessage(
             items_completed: int,
             amount_of_items: int,
@@ -77,31 +79,31 @@ class main:
 
     def download_all(self):
         playlist_url = self.url_input.get()
-        dir = self.dir_input.get()
+        download_dir = self.dir_input.get()
 
-        self.ripper = Ripper(dir, playlist_url)
+        if not os.path.exists(download_dir):
+            self.error_message_dir.set("Please select a valid folder")
+            has_error_occured = True
+
+        self.ripper = Ripper(download_dir, playlist_url)
 
         has_error_occured = False
         if not self.ripper.is_valid_playlist():
             self.error_message_url.set("Please select a valid url")
             has_error_occured = True
 
-        # if directory does NOT exist ...
-        if not os.path.exists(dir):
-            self.error_message_dir.set("Please select a valid folder")
-            has_error_occured = True
-
         if has_error_occured:
+            # TODO delete self.ripper
             return
 
         self.t.add(
             lambda: self.ripper.download_all_audio(
-                self.on_file_downloaded, self.on_file_loaded, self.on_finish_downloading
+                self.update_downloading_text, self.update_loading_text, self.show_download_complete_message
             )
         )
 
-    def on_finish_downloading(self, ripper: Ripper):
-        log = (
+    def show_download_complete_message(self, ripper: Ripper):
+        messagebox_output = (
             (
                 f"{len(ripper.files_downloaded)}/{ripper.playlist.length} file(s) downloaded"
             )
@@ -122,13 +124,14 @@ class main:
             )
         )
 
-        messagebox.showinfo("Done!", log)
+        messagebox.showinfo("Done!", messagebox_output)
 
     def on_cancel_download(self):
         if self.ripper is not None:
             self.ripper.stop_download()
-            self.t.add(lambda: self.on_file_loaded(0, 0))
-            self.t.add(lambda: self.on_file_downloaded(0, 0))
+            self.t.add(lambda: self.update_loading_text(0, 0))
+            self.t.add(lambda: self.update_downloading_text(0, 0))
+            # TODO delete self.ripper
 
     def on_change_directory(self):
         dir_input_temp = filedialog.askdirectory()
