@@ -1,60 +1,56 @@
 from queue import Queue, Empty
-from threading import Thread
+from threading import Thread, Semaphore
 import time
 
 class ThreadQueue:
-    """runs functions synchronously on a single thread"""
+    """Runs functions on many threads asynchronously."""
     
-    def __init__(self):
-        # queue of all functions to be called
+    def __init__(self, max_threads=4):
         self._queue = Queue()
-        # the thread 
-        self._thread = None
-        # true if thead is running
+        self._max_threads = max_threads
+        self._semaphore = Semaphore(max_threads)
         self.is_alive = False
 
-    def add(self, func):
-      """alows you to add a prosses to the queue"""
-      # add function to the queue
-      self._queue.put(func)
-      # if thread NOT running ...
-      if self.is_alive == False:
-        # set thead to running
-        self.is_alive = True
-        # creates a thread that recursivley calls functions in the queue
-        self._thread = Thread(target=lambda:self._do_function()).start()
+    def add(self, func, *args):
+        """Adds a process to the queue."""
+        job = {"func": func, "args": args}
+        self._queue.put(job)
+        if not self.is_alive:
+            self.is_alive = True
+            self._do_function()
 
     def _do_function(self):
-      # check if there is a function in the queue
-      try:
-        first = self._queue.get()
-      except Empty:
-        # if queue is empty ... set thread to NOT running
-          self.is_alive = False
-      else:
-        # run the first item of the queue
-        first()
-        # try do the next function
-        self._do_function()
+        """ recursivley calls function on a new thread"""
+        try:
+            job = self._queue.get_nowait()
+        except Empty:
+            self.is_alive = False
+        else:
+            self._semaphore.acquire()
+            Thread(target=self._execute_job, args=(job,)).start()
+            self._do_function()
 
-# queue = Queue()
-
-# def z():
-#     while True:
-#         time.sleep(0.1)
-#         print("x")
+    def _execute_job(self, job):
+        """executes a job and releases semaphore when done."""
+        try:
+            job["func"](*job["args"])
+        finally:
+            self._semaphore.release()
 
 # def foo(x, s):
 #     time.sleep(s)
 #     print(x)
 
-
-# Thread(target=z).start()
-
 # t1 = ThreadQueue()
-# t1.add(lambda:foo("***1", 1))
-# t1.add(lambda:foo("***2", 3))
-# t1.add(lambda:foo("***3", 1))
-# t1.add(lambda:foo("***4", 1))
+# t1.add(lambda: foo("***1", 1))
+# t1.add(lambda: foo("***2", 1))
+# t1.add(lambda: foo("***3", 1))
+# t1.add(lambda: foo("***4", 1))
+
+# t1.add(lambda: foo("***1", 1))
+# t1.add(lambda: foo("***2", 1))
+# t1.add(lambda: foo("***3", 1))
+# t1.add(lambda: foo("***4", 1))
+
 # time.sleep(7)
-# t1.add(lambda:foo("***5", 1))
+# t1.add(lambda: foo("***5", 1))

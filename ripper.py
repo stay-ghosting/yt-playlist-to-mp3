@@ -6,6 +6,7 @@ from typing import Tuple, Callable
 import subprocess
 import tempfile
 import shutil
+from threadQueue import ThreadQueue
 
 # show songs you already have in logs
 
@@ -190,27 +191,26 @@ class Ripper:
             f for f in os.listdir(self.dir) if os.path.isfile(os.path.join(self.dir, f))
         ]
 
-        # for video in playlist ...
+
+        threadQueue = ThreadQueue()
+
+        def sort_out_lists():
+                if self.stop == True:
+                    return
+                
+                values = self.get_values_for_callback_load(video, False)
+                on_progress_callback(*values)
+                file_exists = self.video_id_in_list(video, filesNames)
+
+                if file_exists:
+                    self.files_in_folder.append(video)
+                elif video.age_restricted:
+                    self.files_age_restricted.append(video)
+                else:
+                    self.files_to_download.append(video)
+        
         for video in self.playlist.videos:
-            if self.stop == True:
-                return
-            # call callback
-            values = self.get_values_for_callback_load(video, False)
-            on_progress_callback(*values)
-            # if in directory
-            file_exists = self.video_id_in_list(video, filesNames)
-            
-            # if in directory or restricted video...
-            if file_exists:
-                # add to files in folder list
-                self.files_in_folder.append(video)
-            # if file age restricted ...
-            elif video.age_restricted:
-                # add to age restricted list
-                self.files_age_restricted.append(video)
-            else:
-                # add to files to download list
-                self.files_to_download.append(video)
+            threadQueue.add(sort_out_lists(video))
 
 
         # call callback
