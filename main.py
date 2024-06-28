@@ -21,9 +21,9 @@ class main:
 
     def initilaise_variables(self):
         self.debug_url_input = (
-            "https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-"
+            "https://youtube.com/playlist?list=PLo80Q9Yj8XHfwXBQMv5qRXgyQ_KcrLRxs&si=VK9GPGeHHlQIHi2i"
         )
-        self.debug_dir_input = r"D:\ribby\Music\songs\party"
+        self.debug_dir_input = os.path.join(os.getcwd(), "songs")
 
         self.url_input = ctk.StringVar()
         self.url_input.set(self.debug_url_input)
@@ -60,7 +60,8 @@ class main:
         ):
             if is_finished:
                 value = 1
-                text.set(f"{message} {items_completed} / {amount_of_items}\nDone!")
+                text.set(
+                    f"{message} {items_completed} / {amount_of_items}\nDone!")
             elif items_completed + amount_of_items <= 0:
                 value = 0
                 text.set(f"{message}\n")
@@ -164,7 +165,7 @@ class main:
         )
 
         lbl_dir_title = ctk.CTkLabel(main, text=f"Output folder:")
-        frm_dir = ctk.CTkFrame(main, bg_color="#2B2A2A", fg_color="#353639" )
+        frm_dir = ctk.CTkFrame(main, bg_color="#2B2A2A", fg_color="#353639")
         btn_open_dir = ctk.CTkButton(
             frm_dir, text="Open Folder", command=self.on_change_directory
         )
@@ -181,7 +182,7 @@ class main:
         )
         file_load_progress_bar.set(0)
         lbl_all_files_progress_bar = ctk.CTkLabel(
-            main, textvariable=self.lbl_all_files_progress_bar_text, justify=ctk.LEFT, 
+            main, textvariable=self.lbl_all_files_progress_bar_text, justify=ctk.LEFT,
         )
         all_files_progress_bar = ctk.CTkProgressBar(
             main, variable=self.lbl_all_files_progress_bar_value, fg_color="#353639"

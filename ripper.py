@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import shutil
 
+# show songs you already have in logs
 
 class Ripper:
     def __init__(self, dir: str, playlist_url: str):
