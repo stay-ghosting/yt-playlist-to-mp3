@@ -1,60 +1,62 @@
 from queue import Queue, Empty
-from threading import Thread
+from threading import Thread, current_thread
 import time
+from typing import Callable
 
 class ThreadQueue:
-    """runs functions synchronously on a single thread"""
-    
-    def __init__(self):
-        # queue of all functions to be called
-        self._queue = Queue()
-        # the thread 
-        self._thread = None
-        # true if thead is running
-        self.is_alive = False
+    """Allows you to run multiple threads with add method.
+    is_alive method allows you to check if all threads are complete"""
 
-    def add(self, func):
-      """alows you to add a prosses to the queue"""
-      # add function to the queue
-      self._queue.put(func)
-      # if thread NOT running ...
-      if self.is_alive == False:
-        # set thead to running
-        self.is_alive = True
-        # creates a thread that recursivley calls functions in the queue
-        self._thread = Thread(target=lambda:self._do_function()).start()
+    def __init__(self, max_threads=4):
+        self.MAX_THREADS = max_threads
+        self._threads_running = []
+        self._tasks_waiting = Queue()
 
-    def _do_function(self):
-      # check if there is a function in the queue
-      try:
-        first = self._queue.get()
-      except Empty:
-        # if queue is empty ... set thread to NOT running
-          self.is_alive = False
-      else:
-        # run the first item of the queue
-        first()
-        # try do the next function
-        self._do_function()
+    def add(self, func, *args, **kwargs):
+        """Runs a function on a new thread."""
+        if len(self._threads_running) >= self.MAX_THREADS:
+            self._tasks_waiting.put((func, args, kwargs))
+        else:
+            thread = Thread(target=self._run_task, args=(func, args, kwargs))
+            self._threads_running.append(thread)
+            thread.start()
 
-# queue = Queue()
+    def _run_task(self, func, args, kwargs):
+        """Executes the function and manages running/waiting tasks."""
+        func(*args, **kwargs)
+        self._threads_running.remove(current_thread())
+        self._process_next_task()
 
-# def z():
-#     while True:
-#         time.sleep(0.1)
-#         print("x")
+    def _process_next_task(self):
+        """Processes the next task in the waiting queue."""
+        try:
+            next_func, next_args, next_kwargs = self._tasks_waiting.get_nowait()
+        except Empty:
+            pass
+        else:
+            self.add(next_func, *next_args, **next_kwargs)
 
-# def foo(x, s):
-#     time.sleep(s)
-#     print(x)
+    def is_alive(self):
+        """Returns True if 1 or more thread is still running."""
+        return any(thread.is_alive() for thread in self._threads_running)
 
+def foo(x, s):
+    import time
+    time.sleep(s)
+    print(x)
 
-# Thread(target=z).start()
+# Example usage
+if __name__ == "__main__":
+    t1 = ThreadQueue()
+    t1.add(foo, "***1", 1)
+    t1.add(foo, "***2", 1)
+    t1.add(foo, "***3", 1)
+    t1.add(foo, "***4", 1)
 
-# t1 = ThreadQueue()
-# t1.add(lambda:foo("***1", 1))
-# t1.add(lambda:foo("***2", 3))
-# t1.add(lambda:foo("***3", 1))
-# t1.add(lambda:foo("***4", 1))
-# time.sleep(7)
-# t1.add(lambda:foo("***5", 1))
+    t1.add(foo, "***1", 1)
+    t1.add(foo, "***2", 1)
+    t1.add(foo, "***3", 1)
+    t1.add(foo, "***4", 1)
+
+    time.sleep(7)
+    t1.add(foo, "***5", 1)

@@ -21,7 +21,7 @@ class main:
 
     def initilaise_variables(self):
         self.debug_url_input = (
-            "https://youtube.com/playlist?list=PLo80Q9Yj8XHfwXBQMv5qRXgyQ_KcrLRxs&si=VK9GPGeHHlQIHi2i"
+            "https://youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-&si=yIEnwfSvGfLzU3VM"
         )
         self.debug_dir_input = os.path.join(os.getcwd(), "songs")
 
