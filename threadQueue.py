@@ -1,56 +1,62 @@
 from queue import Queue, Empty
-from threading import Thread, Semaphore
+from threading import Thread, current_thread
 import time
+from typing import Callable
 
 class ThreadQueue:
-    """Runs functions on many threads asynchronously."""
-    
+    """Allows you to run multiple threads with add method.
+    is_alive method allows you to check if all threads are complete"""
+
     def __init__(self, max_threads=4):
-        self._queue = Queue()
-        self._max_threads = max_threads
-        self._semaphore = Semaphore(max_threads)
-        self.is_alive = False
+        self.MAX_THREADS = max_threads
+        self._threads_running = []
+        self._tasks_waiting = Queue()
 
-    def add(self, func, *args):
-        """Adds a process to the queue."""
-        job = {"func": func, "args": args}
-        self._queue.put(job)
-        if not self.is_alive:
-            self.is_alive = True
-            self._do_function()
-
-    def _do_function(self):
-        """ recursivley calls function on a new thread"""
-        try:
-            job = self._queue.get_nowait()
-        except Empty:
-            self.is_alive = False
+    def add(self, func, *args, **kwargs):
+        """Runs a function on a new thread."""
+        if len(self._threads_running) >= self.MAX_THREADS:
+            self._tasks_waiting.put((func, args, kwargs))
         else:
-            self._semaphore.acquire()
-            Thread(target=self._execute_job, args=(job,)).start()
-            self._do_function()
+            thread = Thread(target=self._run_task, args=(func, args, kwargs))
+            self._threads_running.append(thread)
+            thread.start()
 
-    def _execute_job(self, job):
-        """executes a job and releases semaphore when done."""
+    def _run_task(self, func, args, kwargs):
+        """Executes the function and manages running/waiting tasks."""
+        func(*args, **kwargs)
+        self._threads_running.remove(current_thread())
+        self._process_next_task()
+
+    def _process_next_task(self):
+        """Processes the next task in the waiting queue."""
         try:
-            job["func"](*job["args"])
-        finally:
-            self._semaphore.release()
+            next_func, next_args, next_kwargs = self._tasks_waiting.get_nowait()
+        except Empty:
+            pass
+        else:
+            self.add(next_func, *next_args, **next_kwargs)
 
-# def foo(x, s):
-#     time.sleep(s)
-#     print(x)
+    def is_alive(self):
+        """Returns True if 1 or more thread is still running."""
+        return any(thread.is_alive() for thread in self._threads_running)
 
-# t1 = ThreadQueue()
-# t1.add(lambda: foo("***1", 1))
-# t1.add(lambda: foo("***2", 1))
-# t1.add(lambda: foo("***3", 1))
-# t1.add(lambda: foo("***4", 1))
+def foo(x, s):
+    import time
+    time.sleep(s)
+    print(x)
 
-# t1.add(lambda: foo("***1", 1))
-# t1.add(lambda: foo("***2", 1))
-# t1.add(lambda: foo("***3", 1))
-# t1.add(lambda: foo("***4", 1))
+# Example usage
+if __name__ == "__main__":
+    t1 = ThreadQueue()
+    t1.add(foo, "***1", 1)
+    t1.add(foo, "***2", 1)
+    t1.add(foo, "***3", 1)
+    t1.add(foo, "***4", 1)
 
-# time.sleep(7)
-# t1.add(lambda: foo("***5", 1))
+    t1.add(foo, "***1", 1)
+    t1.add(foo, "***2", 1)
+    t1.add(foo, "***3", 1)
+    t1.add(foo, "***4", 1)
+
+    time.sleep(7)
+    t1.add(foo, "***5", 1)

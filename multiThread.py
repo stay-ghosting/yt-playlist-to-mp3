@@ -1,67 +1,63 @@
 from queue import Queue
-from threading import Thread
+from threading import Thread, current_thread
 import time
-from typing import Callable
+from typing import Callable, List
 
 
 class MultiThread:
-    """allows you to run multiple threads with add method.
-    is alive method allows you to check if all threads are complete"""
-    
+    """Allows you to run multiple threads with add method.
+    is_alive method allows you to check if all threads are complete."""
 
-    def __init__(self, max_theads=2):
-        # list of all the functions currently running
-        self.MAX_THREADS = max_theads
-        self._functions_running: list[Callable] = []
-        self._functions_waiting: Queue[Callable] = Queue()
+    def __init__(self, max_threads=3):
+        self.MAX_THREADS = max_threads
+        self._threads_running: List[Thread] = []
+        self._functions_waiting: Queue[tuple[Callable, tuple, dict]] = Queue()
 
-    def add(self, func: Callable):
-        """runs on a new thread"""
-        # if at max threads ...
-        if len(self._functions_running) >= self.MAX_THREADS:
-            # put in queue
-            self._functions_waiting.put(func)
-        # if at NOT max threads ...
+    def add(self, func: Callable, *args, **kwargs):
+        if len(self._threads_running) >= self.MAX_THREADS:
+            self._functions_waiting.put((func, args, kwargs))
         else:
-            # add it to list
-            self._functions_running.append(func),
-            Thread(target=lambda:self._do_function(func)).start()
+            thread = Thread(target=self._do_function, args=(func, args, kwargs))
+            self._threads_running.append(thread)
+            thread.start()
 
-    def _do_function(self, func: Callable):
-        # do task
-        func(),
-        # remove it from list
-        self._functions_running.remove(func)
-        # get function from the queue and try run it
-        self.add(self._functions_waiting.get())
-        
+    def _do_function(self, func: Callable, args: tuple, kwargs: dict):
+        func(*args, **kwargs)
+        self._threads_running.remove(current_thread())
+        self._process_next()
+
+    def _process_next(self):
+        if not self._functions_waiting.empty():
+            next_func, next_args, next_kwargs = self._functions_waiting.get()
+            self.add(next_func, *next_args, **next_kwargs)
+
     def is_alive(self):
         """True if 1 or more thread is still running"""
-        return len(self._functions_running) != 0
+        return any(thread.is_alive() for thread in self._threads_running)
 
 
+if __name__ == "__main__":
 
-# def foo(s):
-#     time.sleep(s)
-#     print(f"**{s}")
+    def foo(s):
+        time.sleep(s)
+        print(f"**{s}")
+
+    def bar():
+        time.sleep(3)
+        print("**bar")
 
 
-# t = MultiThread()
-# t.add(lambda:foo(3))
-# t.add(lambda:foo(3))
-# t.add(lambda:foo(3))
+    t = MultiThread()
+    t.add(foo, 1)
+    t.add(foo, 2)
+    t.add(foo, 3)
 
-# t.add(lambda:foo(3))
-# t.add(lambda:foo(3))
-# t.add(lambda:foo(3))
+    t.add(bar)
+    t.add(bar)
+    t.add(bar)
 
-# t.add(lambda:foo(3))
-# time.sleep(11)
-# t.add(lambda:foo(3))
+    time.sleep(11)
+    t.add(foo, 1)
 
-# while True:
-#     pass
-    # print(len(t._functions_running))
-    
-# 1 1 1
-# 1
+    while t.is_alive():
+        time.sleep(0.1)
