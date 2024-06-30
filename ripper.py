@@ -16,7 +16,7 @@ class Ripper:
         self.files_to_download: list[pytube.YouTube] = []
         self.files_in_folder: list[pytube.YouTube] = []
         self.files_age_restricted: list[pytube.YouTube] = []
-        self.unaccessible_videos: list[pytube.YouTube] = []
+        self.unaccessable_videos: list[pytube.YouTube] = []
         self.files_downloaded: list[pytube.YouTube] = []
         self.stop = False
         self.debug_load_times = []
@@ -45,7 +45,7 @@ class Ripper:
 
     def get_values_for_callback_download(self, song: pytube.YouTube, is_finished: bool):
         items_completed = len(self.files_downloaded)
-        amount_of_items = len(self.files_to_download) - len(self.unaccessible_videos)
+        amount_of_items = len(self.files_to_download) - len(self.unaccessable_videos)
         if song is None:
             return (items_completed, amount_of_items, "", is_finished)
         try:
@@ -77,7 +77,7 @@ class Ripper:
             return
         
         self.files_downloaded = []
-        self.unaccessible_videos = []
+        self.unaccessable_videos = []
         temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
 
         try:
@@ -91,7 +91,7 @@ class Ripper:
             try:
                 audio = video.streams.filter(only_audio=True).first()
             except KeyError:
-                self.unaccessible_videos.append(video)
+                self.unaccessable_videos.append(video)
                 return
             
             on_complete_callback(*self.get_values_for_callback_download(video, False))

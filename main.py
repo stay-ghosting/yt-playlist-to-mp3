@@ -3,6 +3,7 @@ import customtkinter as ctk
 from ripper import Ripper
 import os
 from threadQueue import ThreadQueue
+import threading
 
 
 # TODO create json save - recents/ key
@@ -13,7 +14,6 @@ from threadQueue import ThreadQueue
 class main:
     def __init__(self):
         self.app = ctk.CTk()
-        self.t = ThreadQueue()
         self.ripper: Ripper = None
         self.initilaise_variables()
         self.draw_screen()
@@ -21,7 +21,8 @@ class main:
 
     def initilaise_variables(self):
         self.debug_url_input = (
-            "https://youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-&si=yIEnwfSvGfLzU3VM"
+            # "https://youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-&si=yIEnwfSvGfLzU3VM" # party
+            "https://youtube.com/playlist?list=PLo80Q9Yj8XHfwXBQMv5qRXgyQ_KcrLRxs&si=E6UDfZZp80WrIm2y" # beats
         )
         self.debug_dir_input = os.path.join(os.getcwd(), "songs")
 
@@ -95,11 +96,11 @@ class main:
         if has_error_occured:
             return
 
-        self.t.add(
+        threading.Thread(target=
             lambda: self.ripper.download_all_audio(
                 self.on_file_downloaded, self.on_file_loaded, self.on_finish_downloading
             )
-        )
+        ).start()
 
     def on_finish_downloading(self, ripper: Ripper):
         log = (
@@ -128,8 +129,8 @@ class main:
     def on_cancel_download(self):
         if self.ripper is not None:
             self.ripper.stop_download()
-            self.t.add(lambda: self.on_file_loaded(0, 0))
-            self.t.add(lambda: self.on_file_downloaded(0, 0))
+            threading.Thread(target=lambda: self.on_file_loaded(0, 0)).start()
+            threading.Thread(target=lambda: self.on_file_downloaded(0, 0)).start()
 
     def on_change_directory(self):
         dir_input_temp = filedialog.askdirectory()
