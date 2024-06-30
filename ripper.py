@@ -6,11 +6,8 @@ from typing import Tuple, Callable
 import subprocess
 import tempfile
 import shutil
-from threadQueue import ThreadQueue
-from threading import Lock
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
-# show songs you already have in logs
+import time
 
 class Ripper:
     def __init__(self, dir: str, playlist_url: str):
@@ -19,21 +16,17 @@ class Ripper:
         self.files_to_download: list[pytube.YouTube] = []
         self.files_in_folder: list[pytube.YouTube] = []
         self.files_age_restricted: list[pytube.YouTube] = []
-        self.unaccessable_videos: list[pytube.YouTube] = []
+        self.unaccessible_videos: list[pytube.YouTube] = []
         self.files_downloaded: list[pytube.YouTube] = []
         self.stop = False
         self.debug_load_times = []
-        self.lock = Lock()
 
     def is_valid_playlist(self):
         """True if playlist exists"""
-        # try ... get length of playlist
         try:
             self.playlist.length
-        # if NOT found ... return False
         except Exception:
             return False
-        # if found ... return True
         else:
             return True
 
@@ -43,22 +36,16 @@ class Ripper:
     def video_id_in_list(self, video: pytube.YouTube, files_names: set[str]):
         """Returns True if video id exists in list
         by checking for video id at the end of the file name"""
-
         video_id = video.video_id
         video_id_formatted = f"[{video_id}]"
-
         for fileName in files_names:
             if fileName.endswith(video_id_formatted):
                 return True
-
         return False
-
-
-        
 
     def get_values_for_callback_download(self, song: pytube.YouTube, is_finished: bool):
         items_completed = len(self.files_downloaded)
-        amount_of_items = len(self.files_to_download) - len(self.unaccessable_videos)
+        amount_of_items = len(self.files_to_download) - len(self.unaccessible_videos)
         if song is None:
             return (items_completed, amount_of_items, "", is_finished)
         try:
@@ -68,11 +55,7 @@ class Ripper:
         return (items_completed, amount_of_items, title, is_finished)
 
     def get_values_for_callback_load(self, song: pytube.YouTube, is_finished: bool):
-        total_videos = (
-            len(self.playlist.videos)
-            - len(self.files_in_folder)
-            - len(self.files_age_restricted)
-        )
+        total_videos = len(self.playlist.videos) - len(self.files_in_folder) - len(self.files_age_restricted)
         amount_loaded = len(self.files_to_download)
         if song is None:
             return (amount_loaded, total_videos, "", is_finished)
@@ -86,18 +69,15 @@ class Ripper:
         self,
         on_complete_callback: Callable[[int, int, str], any],
         on_progress_callback: Callable[[int, int, str], any],
-        on_done_callback,
+        on_done_callback: Callable[[object], any],
     ):
-        """Gets list of YouTube objects and coverts them to mp3.
-        Also adds video id at the end of the title"""
         self.stop = False
         self.filter_playlist(on_progress_callback)
-        if self.stop == True:
-            self.stop = False
+        if self.stop:
             return
         
         self.files_downloaded = []
-        self.unaccessable_videos = []
+        self.unaccessible_videos = []
         temp_dir = os.path.join(tempfile.gettempdir(), "ripper")
 
         try:
@@ -105,17 +85,18 @@ class Ripper:
         except Exception:
             pass
 
-        for i, video in enumerate(self.files_to_download):
-            if self.stop == True:
-                self.stop = False
-                return
-            on_complete_callback(*self.get_values_for_callback_download(video, False))
+        start_time = time.time()
+
+        def download_and_convert(video):
             try:
                 audio = video.streams.filter(only_audio=True).first()
             except KeyError:
-                self.unaccessable_videos.append(video)
-                continue
-            else:
+                self.unaccessible_videos.append(video)
+                return
+            
+            on_complete_callback(*self.get_values_for_callback_download(video, False))
+            
+            try:
                 audio.download(temp_dir)
                 original_file_path = os.path.join(temp_dir, audio.default_filename)
                 filename = audio.default_filename.removesuffix(".mp4")
@@ -126,18 +107,31 @@ class Ripper:
                 except Exception:
                     pass
                 self.files_downloaded.append(video)
-                is_last_video = i == len(self.files_to_download) - 1
-                if is_last_video:
-                    on_complete_callback(*self.get_values_for_callback_download(video, False))
-                
+            except Exception as e:
+                print(f"Error processing video {video.title}: {str(e)}")
+            
+            on_complete_callback(*self.get_values_for_callback_download(video, False))
+        
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            # Make a copy of the list to avoid issues with generator execution
+            videos_to_process = list(self.files_to_download)
+            futures = [executor.submit(download_and_convert, video) for video in videos_to_process]
+            
+            # Wait for all tasks to complete
+            for future in as_completed(futures):
+                pass
+        
         try:
             shutil.rmtree(temp_dir)
         except Exception:
             pass
 
+        end_time = time.time()  # Record end time
+        elapsed_time = end_time - start_time
+        print(f"Total time taken: {elapsed_time:.2f} seconds")
+
         on_complete_callback(*self.get_values_for_callback_download(None, True))
         on_done_callback(self)
-
 
     def filter_playlist(self, on_progress_callback: Callable[[int, int], any]) -> Tuple[pytube.YouTube, pytube.YouTube]:
         filesNames = {
@@ -156,16 +150,22 @@ class Ripper:
                 self.files_to_download.append(video)
 
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(process_video, video) for video in self.playlist.videos]
+            # Copy the generator output to a list to avoid concurrent access issues
+            videos_to_process = list(self.playlist.videos)
+            futures = [executor.submit(process_video, video) for video in videos_to_process]
 
             for future in as_completed(futures):
                 pass
 
         on_progress_callback(*self.get_values_for_callback_load(None, True))
 
-
-# url = 'https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG'
-# dir = "D:/ribby/Documents/Work/python/ripper/songs"
-
-# files_in_folder, files_to_download = filter_playlist(url, dir)
-# download_audio(files_to_download, dir)
+# Example usage:
+if __name__ == "__main__":
+    url = 'https://www.youtube.com/playlist?list=PLo80Q9Yj8XHfHtCXfrp81qRw5-PtLP-TG'
+    dir = "D:/ribby/Documents/Work/python/ripper/songs"
+    ripper = Ripper(dir, url)
+    ripper.download_all_audio(
+        on_complete_callback=lambda items_completed, amount_of_items, title, is_finished: None,
+        on_progress_callback=lambda amount_loaded, total_videos, title, is_finished: None,
+        on_done_callback=lambda ripper: None
+    )
