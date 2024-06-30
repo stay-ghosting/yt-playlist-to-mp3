@@ -1,0 +1,5 @@
+TODO create json save - recents/ key
+TODO make logs
+TODO time elapsed
+TODO settings
+TODO sort out when songs are already on the folder

@@ -1,17 +1,12 @@
+# main.py
+
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
 from ripper import Ripper
 import os
-from threadQueue import ThreadQueue
 import threading
 
-
-# TODO create json save - recents/ key
-# TODO make logs
-# TODO time elapsed
-# TODO settings
-
-class main:
+class MainApplication:
     def __init__(self):
         self.app = ctk.CTk()
         self.ripper: Ripper = None
@@ -21,8 +16,8 @@ class main:
 
     def initilaise_variables(self):
         self.debug_url_input = (
-            # "https://youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-&si=yIEnwfSvGfLzU3VM" # party
-            "https://youtube.com/playlist?list=PLo80Q9Yj8XHfwXBQMv5qRXgyQ_KcrLRxs&si=E6UDfZZp80WrIm2y" # beats
+            # "https://youtube.com/playlist?list=PLo80Q9Yj8XHfwXBQMv5qRXgyQ_KcrLRxs&si=E6UDfZZp80WrIm2y" # beats
+            "https://youtube.com/playlist?list=PLo80Q9Yj8XHfU_yMt7PwYZd5SekX_Whh-&si=YkLHtbj8Cx9izNQx"
         )
         self.debug_dir_input = os.path.join(os.getcwd(), "songs")
 
@@ -78,6 +73,9 @@ class main:
         return progressAndMessage
 
     def download_all(self):
+        threading.Thread(target=lambda: self.on_file_loaded(0, 0)).start()
+        threading.Thread(target=lambda: self.on_file_downloaded(0, 0)).start()
+
         playlist_url = self.url_input.get()
         dir = self.dir_input.get()
 
@@ -88,19 +86,25 @@ class main:
             self.error_message_url.set("Please select a valid url")
             has_error_occured = True
 
-        # if directory does NOT exist ...
         if not os.path.exists(dir):
             self.error_message_dir.set("Please select a valid folder")
             has_error_occured = True
 
         if has_error_occured:
             return
+        
+        self.btn_stop_download.configure(state=ctk.NORMAL)
+        self.btn_download.configure(state=ctk.DISABLED)
 
-        threading.Thread(target=
-            lambda: self.ripper.download_all_audio(
-                self.on_file_downloaded, self.on_file_loaded, self.on_finish_downloading
-            )
-        ).start()
+        threading.Thread(target=self.start_download).start()
+
+    def start_download(self):
+        self.ripper.download_all_audio(
+            self.on_file_downloaded,
+            self.on_file_loaded,
+            self.on_finish_downloading,
+            self.on_cancel_download
+        )
 
     def on_finish_downloading(self, ripper: Ripper):
         log = (
@@ -108,29 +112,31 @@ class main:
                 f"{len(ripper.files_downloaded)}/{ripper.playlist.length} file(s) downloaded"
             )
             + (
-                (f"\n{len(ripper.files_age_restricted)} file(s) was age restricred")
-                if (len(ripper.files_age_restricted) > 0)
-                else ""
+                (f"\n{len(ripper.files_age_restricted)} file(s) were age restricted")
+                # if (len(ripper.files_age_restricted) > 0)
+                # else ""
             )
             + (
-                (f"\n{len(ripper.files_in_folder)} file(s) are in your folder alerady")
-                if (len(ripper.files_in_folder) > 0)
-                else ""
+                (f"\n{len(ripper.files_in_folder)} file(s) are already in your folder")
+                # if (len(ripper.files_in_folder) > 0)
+                # else ""
             )
             + (
-                (f"\n{len(ripper.unaccessable_videos)} file(s) couldn't be downloaded")
-                if (len(ripper.unaccessable_videos) > 0)
-                else ""
+                (f"\n{len(ripper.unaccessible_videos)} file(s) couldn't be downloaded")
+                # if (len(ripper.unaccessible_videos) > 0)
+                # else ""
             )
         )
 
         messagebox.showinfo("Done!", log)
 
     def on_cancel_download(self):
+        self.btn_stop_download.configure(state=ctk.DISABLED)
+        self.btn_download.configure(state=ctk.NORMAL)
         if self.ripper is not None:
             self.ripper.stop_download()
-            threading.Thread(target=lambda: self.on_file_loaded(0, 0)).start()
-            threading.Thread(target=lambda: self.on_file_downloaded(0, 0)).start()
+            # threading.Thread(target=lambda: self.on_file_loaded(0, 0)).start()
+            # threading.Thread(target=lambda: self.on_file_downloaded(0, 0)).start()
 
     def on_change_directory(self):
         dir_input_temp = filedialog.askdirectory()
@@ -191,12 +197,13 @@ class main:
         all_files_progress_bar.set(0)
 
         frm_download_buttons = ctk.CTkFrame(main, fg_color="transparent")
-        btn_stop_download = ctk.CTkButton(
+        self.btn_stop_download = ctk.CTkButton(
             frm_download_buttons,
             text="Stop Download",
+            state=ctk.DISABLED,
             command=lambda: self.on_cancel_download(),
         )
-        btn_download = ctk.CTkButton(
+        self.btn_download = ctk.CTkButton(
             frm_download_buttons,
             text="Start Download",
             command=lambda: self.download_all(),
@@ -218,9 +225,10 @@ class main:
         all_files_progress_bar.pack(fill=ctk.BOTH, padx=20, pady=5)
 
         frm_download_buttons.pack(pady=(40, 30))
-        btn_stop_download.pack(padx=10, side=ctk.LEFT)
-        btn_download.pack(padx=10)
+        self.btn_stop_download.pack(padx=10, side=ctk.LEFT)
+        self.btn_download.pack(padx=10)
         main.place(relx=0.5, rely=0.5, anchor=ctk.CENTER)
 
 
-main()
+if __name__ == "__main__":
+    app = MainApplication()
